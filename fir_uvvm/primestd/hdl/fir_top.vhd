@@ -31,10 +31,7 @@ entity fir_top is
     );
 end entity fir_top;
 
---! todo, add 1 parameter to bypass lowpass filter???
-
---! @brief the architecture implements the 2 stage low pass fir filter to I and Q data in parallel
---! with total decimation factor of 4
+--! @brief the architecture implements the low pass fir filter with configurale 2 or no decimation factor
 --! @details the unit does not handle back-pressure and stalls on the input and output Avalon-ST interfaces.
 --! The various processes form a logical pipeline as shown in the main page of the documentation.
 architecture rtl of fir_top is
@@ -151,8 +148,7 @@ begin
 
   --! @anchor control
   --! @brief This is the main control process of fir_top unit.
-  --! @details The control process checks if a new data packet is available. In this case it starts
-  --! the forwards header. Afterwards, it processes FIR, 
+  --! @details The control process checks if a new data packet is available and starts FIR, 
   --! then forwards filtered output to dataset as per calculated length. 
   control : process(clk, reset)
   variable length_in_count : integer range 0 to 2047;

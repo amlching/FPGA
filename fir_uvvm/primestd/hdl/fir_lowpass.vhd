@@ -278,7 +278,7 @@ source_valid <= source_valid_int;
 
 -- real time error not part of avalon data
 -- reserve error bits for future to check overflow bits or non return to zero inputs
-source_error(1) <= r_add_st5(OUTPUT_WIDTH) xor r_add_st5(OUTPUT_WIDTH+1) xor r_add_st5(OUTPUT_WIDTH+2) xor xor r_add_st5(OUTPUT_WIDTH+3); -- detect overflow
+source_error(1) <= r_add_st5(OUTPUT_WIDTH) xor r_add_st5(OUTPUT_WIDTH+1) xor r_add_st5(OUTPUT_WIDTH+2) xor r_add_st5(OUTPUT_WIDTH+3); -- detect overflow
 source_error(0) <= '0'; 
 
 end rtl;

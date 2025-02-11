@@ -36,15 +36,14 @@ end entity fir_top;
 --! The various processes form a logical pipeline as shown in the main page of the documentation.
 architecture rtl of fir_top is
 
-  constant SENSOR_TYPE_FIRST_PART     : natural := 0;
+  constant SENSOR_TYPE_FIRST_PART : natural := 0;
   constant SCAN_COUNT_FIRST_PART  : natural := 1;
   constant SCAN_COUNT_SECOND_PART : natural := 2;
 
   type control_state_type is (control_idle,
                               forward_header,
                               proc_fir_data,
-                              wait_fir_end,
-                              send_error_word
+                              wait_fir_end
                               );
   signal control_state : control_state_type;
 
@@ -154,7 +153,6 @@ begin
   variable length_in_count : integer range 0 to 2047;
   variable length_out_count : integer range 0 to 2047;
   variable header_part : integer range 0 to SCAN_COUNT_SECOND_PART;
-  variable length_div : integer range 0 to 15;
 
   begin
     if reset then
@@ -167,12 +165,9 @@ begin
           if data_input_startofpacket and data_input_valid and data_output_ready then
             control_state    <= forward_header;
             data_input_ready <= '1';
-          else
-            data_input_ready <= '0';
           end if;
 		  reset_fir_n	<= '0';
 	      fir_valid_in <= '0';
-		  length_div := factor;
 
 		  header_part := SENSOR_TYPE_FIRST_PART;
       	  data_output_valid         <= '0';
@@ -200,7 +195,8 @@ begin
 		  	data_input_ready <= '0';
           	data_output_valid		<= '0';
 		  	error_word <= data_input_data;
-		  	control_state       <= send_error_word;
+			length_out_count := length_in_count/factor;
+			control_state       <= wait_fir_end;
 		  else
 		    if (header_part = SCAN_COUNT_SECOND_PART) then
               control_state <= proc_fir_data;
@@ -237,10 +233,15 @@ begin
 
         when wait_fir_end => -- only fir data, no headers, no error word
 	  	  data_input_ready <= '0';
-          if length_out_count >= (length_in_count/length_div) then  		    
-            control_state  <= send_error_word;
-            data_output_valid <= '0';
-			data_output_data <= (others => '-');
+          if length_out_count >= (length_in_count/factor) then  		    
+			  -- error bits
+			  data_output_data <= error_word(error_word'length-2-1 downto 0)& fir_error_out;
+			  data_output_valid <= '1';
+			  control_state  <= control_idle;
+			  data_output_endofpacket <= '1';
+			  reset_fir_n	<= '0';
+			  fir_data_in <= (others => '0');
+			  fir_valid_in <= '0';
 		  else
 	        if(fir_data_out_valid = '1') then
 		      length_out_count := length_out_count + 1;
@@ -249,16 +250,6 @@ begin
 			-- truncate 33rd bit sign and divide by Q16
 		  	data_output_data <= fir_data_out(31 downto 16);
           end if;	
-
-        when send_error_word =>
-		  -- error bits
-		  data_output_data <= error_word(error_word'length-2-1 downto 0)& fir_error_out;
-		  data_output_valid <= '1';
-		  control_state  <= control_idle;
-		  data_output_endofpacket <= '1';
-		  reset_fir_n	<= '0';
-		  fir_data_in <= (others => '0');
-		  fir_valid_in <= '0'; 
 
         when others =>
           control_state <= control_idle;

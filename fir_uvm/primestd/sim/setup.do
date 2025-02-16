@@ -8,13 +8,14 @@ vlib work
 
 # compile source files
 vlog -work work -stats=none ../rtl/fir_lowpass.sv
+vlog -work work -stats=none ../rtl/fir_avl.sv
+vlog -work work -stats=none ../rtl/axi2avl.sv
+vlog -work work -stats=none ../rtl/avl2axi.sv
 vlog -work work -stats=none ../rtl/fir_top.sv
 
 # compile helper package
 
 # compile testbench
-#vcom -work work -2008 -explicit -stats=none ./fir_th.vhd
-#vcom -work work -2008 -explicit -stats=none ./fir_tb.vhd
 
 set StdArithNoWarnings 1
 set NumericStdNoWarnings 1

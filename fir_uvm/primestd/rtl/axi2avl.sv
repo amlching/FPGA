@@ -8,7 +8,7 @@ module axi2avl #
 		// Do not modify the parameters beyond this line
 
 		// AXI4Stream sink: Data Width
-		parameter integer C_S_AXIS_TDATA_WIDTH	= 16
+		parameter integer DATA_WIDTH	= 16
 	)
 	(
 		// Avalon st rx port
@@ -21,7 +21,7 @@ module axi2avl #
 		//! indicates whether an incoming Avalon-ST packet ends
 		output reg DATA_INPUT_ENDOFPACKET,					
 		//! the incoming Avalon-ST data, including peak/average flag
-		output reg [C_S_AXIS_TDATA_WIDTH-1:0] DATA_INPUT_DATA,			
+		output reg [DATA_WIDTH-1:0] DATA_INPUT_DATA,			
 
 		// AXI4Stream sink: Clock
 		input wire  S_AXIS_ACLK,
@@ -30,9 +30,9 @@ module axi2avl #
 		// Ready to accept data in
 		output wire S_AXIS_TREADY,
 		// Data in
-		input wire [C_S_AXIS_TDATA_WIDTH-1:0] S_AXIS_TDATA,
-		// Indicates boundary of last packet
-		input wire  S_AXIS_TLAST,
+		input wire [DATA_WIDTH-1:0] S_AXIS_TDATA,
+		// Indicates boundary of last packet (optional)
+		input wire  S_AXIS_TLAST, 
 		// Data is in valid
 		input wire  S_AXIS_TVALID
 	);
@@ -128,7 +128,7 @@ module axi2avl #
 	    begin
 	      write_pointer <= 0;
 	      writes_done <= '0;
-		  start_of_frame <= '1;
+		  start_of_frame <= '0;
 		  end_of_frame <= '0;
 	    end  
 	  else
@@ -138,12 +138,14 @@ module axi2avl #
 	          begin
 	            // write pointer is incremented after every write to the FIFO
 	            // when FIFO write signal is enabled.
+				if(!write_pointer)
+				  start_of_frame <= '1;
+				else
+				  start_of_frame <= '0;
 	            write_pointer <= write_pointer + 1;
 	            writes_done <= '0;
-				start_of_frame <= '0;
-				
 	          end
-	          if ((write_pointer == NUMBER_OF_INPUT_WORDS-1)|| S_AXIS_TLAST)
+	          if (write_pointer == NUMBER_OF_INPUT_WORDS-1) //|| S_AXIS_TLAST)
 	            begin
 	              // reads_done is asserted when NUMBER_OF_INPUT_WORDS numbers of streaming data 
 	              // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
@@ -157,13 +159,13 @@ module axi2avl #
 	assign fifo_wren = S_AXIS_TVALID && axis_tready;
 
 	// FIFO Implementation in FF's, infer FIFO in future
-	reg  [C_S_AXIS_TDATA_WIDTH+1:0] stream_data_fifo [0 : NUMBER_OF_INPUT_WORDS-1];
+	reg  [DATA_WIDTH-1:0] stream_data_fifo [0 : NUMBER_OF_INPUT_WORDS-1];
 
 	// Streaming input data is stored in FIFO
 	always @( posedge S_AXIS_ACLK )
     begin
         if (fifo_wren)
-            stream_data_fifo[write_pointer] <= {start_of_frame, end_of_frame, S_AXIS_TDATA};
+            stream_data_fifo[write_pointer] <= S_AXIS_TDATA;
 	end		
 
 	// Hook up avalon-st rx signals
@@ -198,8 +200,8 @@ module axi2avl #
 	      end  
 	end
 
-	assign DATA_INPUT_STARTOFPACKET = stream_data_fifo[read_pointer][C_S_AXIS_TDATA_WIDTH+1];
-	assign DATA_INPUT_ENDOFPACKET = stream_data_fifo[read_pointer][C_S_AXIS_TDATA_WIDTH];
-	assign DATA_INPUT_DATA = stream_data_fifo[read_pointer][C_S_AXIS_TDATA_WIDTH-1:0];
+	assign DATA_INPUT_STARTOFPACKET = start_of_frame;
+	assign DATA_INPUT_ENDOFPACKET = end_of_frame;
+	assign DATA_INPUT_DATA = stream_data_fifo[read_pointer];
 
 	endmodule

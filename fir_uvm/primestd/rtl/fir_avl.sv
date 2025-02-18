@@ -6,15 +6,18 @@
 `timescale 1ns/10ps
 
 //! @brief the entity provides the interfaces and generics required by avalon-st
-module fir_avl(clk, reset, data_input_ready, data_input_valid, data_input_startofpacket, data_input_endofpacket, data_input_data, 
+module fir_avl #
+	(
+		//! 1 means no decimation
+		parameter integer FACTOR = 2,
+		// FIR Data Width
+		parameter integer DATA_WIDTH	= 16
+	)
+	(clk, reset, data_input_ready, data_input_valid, data_input_startofpacket, data_input_endofpacket, data_input_data, 
 data_output_ready, data_output_valid, data_output_startofpacket, data_output_endofpacket, data_output_data, fifo_reset_n);
 
 //! @details the unit does not handle back-pressure and stalls on the input and output Avalon-ST interfaces.
 //! The various processes form a logical pipeline as shown in the main page of the documentation.
-
-	parameter DATA_WIDTH = 16; 						//! Width of filter data
-	parameter FACTOR = 2;							//! 1 means no decimation
-
 	input clk;										//! clock 					
 	input reset;									//! reset, active high
 

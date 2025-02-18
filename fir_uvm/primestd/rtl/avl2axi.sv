@@ -8,7 +8,7 @@ module avl2axi #
 		// Do not modify the parameters beyond this line
 
 		// AXI4Stream source: Data Width
-		parameter integer C_S_AXIS_RDATA_WIDTH	= 16
+		parameter integer DATA_WIDTH	= 16
 	)
 	(
 		// Avalon st tx port
@@ -21,20 +21,20 @@ module avl2axi #
 		//! signals the end of a packet		
 		input wire DATA_OUTPUT_ENDOFPACKET,
 		//! transaction data		
-		input wire [C_S_AXIS_RDATA_WIDTH-1:0] DATA_OUTPUT_DATA,	
+		input wire [DATA_WIDTH-1:0] DATA_OUTPUT_DATA,	
 
 		// AXI4Stream source: Clock
-		input wire  S_AXIS_ACLK,
+		input wire  M_AXIS_ACLK,
 		// AXI4Stream source: Reset
-		input wire  S_AXIS_ARESETN,
+		input wire  M_AXIS_ARESETN,
 		// Ready to accept data out
-		input wire  S_AXIS_RREADY,
+		input wire  M_AXIS_TREADY,
 		// Data out
-		output reg [C_S_AXIS_RDATA_WIDTH-1:0] S_AXIS_RDATA,
+		output reg [DATA_WIDTH-1:0] M_AXIS_TDATA,
 		// Indicates boundary of last packet
-		output reg  S_AXIS_RLAST,
+		output reg  M_AXIS_TLAST,
 		// Data is output valid
-		output reg  S_AXIS_RVALID
+		output reg  M_AXIS_TVALID
 	);
 	// function called clogb2 that returns an integer which has the 
 	// value of the ceiling of the log base 2.
@@ -55,7 +55,7 @@ module avl2axi #
 	parameter [1:0] IDLE = 1'b0,        // This is the initial/idle state 
 
 	                WRITE_FIFO  = 1'b1; // In this state FIFO is written with the
-	                                    // input stream data S_AXIS_RDATA 
+	                                    // input stream data M_AXIS_TDATA 
 	wire avl_output_ready;
 	// State variable
 	reg mst_exec_state;     
@@ -80,9 +80,9 @@ module avl2axi #
 	assign DATA_OUTPUT_READY	= avl_output_ready;
 	
 	// Control state machine implementation
-	always @(posedge S_AXIS_ACLK) 
+	always @(posedge M_AXIS_ACLK) 
 	begin  
-	  if (!S_AXIS_ARESETN) 
+	  if (!M_AXIS_ARESETN) 
 	  // Synchronous reset (active low)
 	    begin
 	      mst_exec_state <= IDLE;
@@ -119,13 +119,13 @@ module avl2axi #
 	end
 	// AXI Streaming Source 
 	// 
-	// The example design source is ready to send the S_AXIS_RDATA when
+	// The example design source is ready to send the M_AXIS_TDATA when
 	// the FIFO is filled with NUMBER_OF_OUTPUT_WORDS number of output words.
 	assign avl_output_ready = ((mst_exec_state == WRITE_FIFO) && (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1));
 
-	always@(posedge S_AXIS_ACLK)
+	always@(posedge M_AXIS_ACLK)
 	begin
-	  if(!S_AXIS_ARESETN)
+	  if(!M_AXIS_ARESETN)
 	    begin
 	      write_pointer <= 0;
 	      writes_done <= '0;
@@ -154,49 +154,49 @@ module avl2axi #
 	assign fifo_wren = DATA_OUTPUT_VALID && avl_output_ready;
 
 	// FIFO Implementation in FF's, infer FIFO in future
-	reg  [C_S_AXIS_RDATA_WIDTH:0] stream_data_fifo [0 : NUMBER_OF_OUTPUT_WORDS-1];
+	reg  [DATA_WIDTH-1:0] stream_data_fifo [0 : NUMBER_OF_OUTPUT_WORDS-1];
 
 	// Streaming input data is stored in FIFO
-	always @( posedge S_AXIS_ACLK )
+	always @( posedge M_AXIS_ACLK )
     begin
         if (fifo_wren)
-            stream_data_fifo[write_pointer] <= {DATA_OUTPUT_ENDOFPACKET, DATA_OUTPUT_DATA};
+            stream_data_fifo[write_pointer] <= DATA_OUTPUT_DATA;
 	end		
 
 	// Hook up axi-st tx signals
 	//! data_input_ready indicates that the unit accepts transactions to read FIFO
-	always@(posedge S_AXIS_ACLK)
+	always@(posedge M_AXIS_ACLK)
 	begin
-	  if(!S_AXIS_ARESETN)
+	  if(!M_AXIS_ARESETN)
 	    begin
 	      read_pointer <= 0;
 		  reads_done <= '0;
-		  S_AXIS_RVALID <= '0;
+		  M_AXIS_TVALID <= '0;
+		  M_AXIS_TLAST <= '0;
 	    end  
 	  else
 	    if (read_pointer <= NUMBER_OF_OUTPUT_WORDS-1)
 	      begin
-	        if (S_AXIS_RREADY)
+	        if (M_AXIS_TREADY)
 	          begin
 	            // read pointer is incremented after every read from the FIFO
-	            // when S_AXIS_RREADY signal is enabled.
+	            // when M_AXIS_TREADY signal is enabled.
 	            read_pointer <= read_pointer + 1;
 	            reads_done <= '0;
-				S_AXIS_RVALID <= '1;				
+				M_AXIS_TVALID <= '1;				
 	          end
-	          if ((read_pointer == NUMBER_OF_OUTPUT_WORDS-1) || stream_data_fifo[read_pointer][C_S_AXIS_RDATA_WIDTH]) // early end of data or all data
+	          if (read_pointer == NUMBER_OF_OUTPUT_WORDS-1) // early end of data or all data
 	            begin
 	              // reads_done is asserted when NUMBER_OF_OUTPUT_WORDS numbers of streaming data 
-	              // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
+	              // has been written to the FIFO which is also marked by M_AXIS_TLAST(kept for optional usage).
 	              reads_done <= '1;
-				  S_AXIS_RVALID <= '0;				  
+				  M_AXIS_TVALID <= '0;
+				  M_AXIS_TLAST <= '1;
 	            end
 	      end
 	end
 
 	// Data out
-	assign S_AXIS_RDATA = stream_data_fifo[read_pointer][C_S_AXIS_RDATA_WIDTH-1:0];
-	// Indicates boundary of last packet
-	assign S_AXIS_RLAST = stream_data_fifo[read_pointer][C_S_AXIS_RDATA_WIDTH];
+	assign M_AXIS_TDATA = stream_data_fifo[read_pointer][DATA_WIDTH-1:0];
 
 	endmodule

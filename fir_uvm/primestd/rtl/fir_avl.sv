@@ -14,7 +14,7 @@ module fir_avl #
 		parameter integer DATA_WIDTH	= 16
 	)
 	(clk, reset, data_input_ready, data_input_valid, data_input_startofpacket, data_input_endofpacket, data_input_data, 
-data_output_ready, data_output_valid, data_output_startofpacket, data_output_endofpacket, data_output_data, fifo_reset_n);
+data_output_ready, data_output_valid, data_output_startofpacket, data_output_endofpacket, data_output_data);
 
 //! @details the unit does not handle back-pressure and stalls on the input and output Avalon-ST interfaces.
 //! The various processes form a logical pipeline as shown in the main page of the documentation.
@@ -32,7 +32,6 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 	output reg data_output_startofpacket;			//! signals a sink that a new packet will be sent
 	output reg data_output_endofpacket;				//! signals the end of a packet
 	output reg [DATA_WIDTH-1:0] data_output_data;	//! transaction data
-	output fifo_reset_n;
 
 	typedef enum logic[3:0] {control_idle = 4'b0001,
                          forward_header = 4'b0010,
@@ -61,8 +60,6 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 	logic data_output_startofpacket_int;
 	logic data_output_endofpacket_int;
 	logic data_output_data_int;
-	
-	assign fifo_reset_n = reset_fir_n;
 	
 	// register output signals
 	always_ff @ (posedge clk or posedge reset)

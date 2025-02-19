@@ -8,7 +8,8 @@ module axi2avl #
 		// Do not modify the parameters beyond this line
 
 		// AXI4Stream sink: Data Width
-		parameter integer DATA_WIDTH	= 16
+		parameter integer DATA_WIDTH	= 16,
+		parameter integer NUM_OF_SAMPLES = 1000
 	)
 	(
 		// Avalon st rx port
@@ -45,8 +46,8 @@ module axi2avl #
 	  end
 	endfunction
 
-	// Total number of input data.
-	localparam NUMBER_OF_INPUT_WORDS  = 2000;
+	// Total number of input data.	  NUM_OF_SAMPLES samples + 4 header/footer
+	localparam NUMBER_OF_INPUT_WORDS  = NUM_OF_SAMPLES+4;
 	// bit_num gives the minimum number of bits needed to address 'NUMBER_OF_INPUT_WORDS' size of FIFO.
 	localparam bit_num  = clogb2(NUMBER_OF_INPUT_WORDS-1);
 	// Define the states of state machine
@@ -61,28 +62,25 @@ module axi2avl #
 	reg mst_exec_state;     
 	// FIFO write enable
 	wire fifo_wren;
-	// start of frame for avalon st rx
-	reg start_of_frame;
-	// end of frame for avalong st rx
-	reg end_of_frame;
-	// FIFO full flag
-	reg fifo_full_flag;
 	// FIFO write pointer
 	reg [bit_num-1:0] write_pointer;
 	// sink has accepted all the streaming data and stored in FIFO
 	reg writes_done;
+	// ack and clears writes_done
+	reg writes_done_ack; 
 	// FIFO read pointer
 	reg [bit_num-1:0] read_pointer;
 	// sink has emptied all the streaming data and from FIFO
 	reg reads_done;
-	// I/O Connections assignments
-
+	// ack and clears reads_done
+	reg reads_done_ack; 
+	
 	assign S_AXIS_TREADY	= axis_tready;
 	// Control state machine implementation
-	always @(posedge S_AXIS_ACLK) 
+	always @(posedge S_AXIS_ACLK or negedge S_AXIS_ARESETN) 
 	begin  
 	  if (!S_AXIS_ARESETN) 
-	  // Synchronous reset (active low)
+	  // asynchronous reset (active low)
 	    begin
 	      mst_exec_state <= IDLE;
 	    end  
@@ -121,37 +119,43 @@ module axi2avl #
 	// The example design sink is always ready to accept the S_AXIS_TDATA  until
 	// the FIFO is not filled with NUMBER_OF_INPUT_WORDS number of input words.
 	assign axis_tready = ((mst_exec_state == WRITE_FIFO) && (write_pointer <= NUMBER_OF_INPUT_WORDS-1));
-
-	always@(posedge S_AXIS_ACLK)
+	
+	always@(posedge S_AXIS_ACLK or negedge S_AXIS_ARESETN)
 	begin
 	  if(!S_AXIS_ARESETN)
 	    begin
 	      write_pointer <= 0;
 	      writes_done <= '0;
-		  start_of_frame <= '0;
-		  end_of_frame <= '0;
+		  reads_done_ack <= '0;
 	    end  
 	  else
 	    if (write_pointer <= NUMBER_OF_INPUT_WORDS-1)
 	      begin
-	        if (fifo_wren)
+	        if (reads_done)
+			  begin
+			    write_pointer <= 0;
+			    reads_done_ack <= '1;
+			  end 
+			else
+			  reads_done_ack <= '0;
+			  
+			if (fifo_wren)
 	          begin
 	            // write pointer is incremented after every write to the FIFO
 	            // when FIFO write signal is enabled.
-				if(!write_pointer)
-				  start_of_frame <= '1;
-				else
-				  start_of_frame <= '0;
 	            write_pointer <= write_pointer + 1;
 	            writes_done <= '0;
 	          end
-	          if (write_pointer == NUMBER_OF_INPUT_WORDS-1) //|| S_AXIS_TLAST)
-	            begin
-	              // reads_done is asserted when NUMBER_OF_INPUT_WORDS numbers of streaming data 
-	              // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
+
+	        if (write_pointer == NUMBER_OF_INPUT_WORDS-1) //|| S_AXIS_TLAST)
+	          begin
+	            // reads_done is asserted when NUMBER_OF_INPUT_WORDS numbers of streaming data 
+	            // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
+				if(!writes_done)
 	              writes_done <= '1;
-				  end_of_frame <= '1;
-	            end
+				else if(writes_done_ack)
+				  writes_done <= '0;
+	          end
 	      end  
 	end
 
@@ -170,38 +174,52 @@ module axi2avl #
 
 	// Hook up avalon-st rx signals
 	//! DATA_INPUT_READY indicates that the unit accepts transactions to read FIFO
-	always@(posedge S_AXIS_ACLK)
+	always@(posedge S_AXIS_ACLK or negedge S_AXIS_ARESETN)
 	begin
 	  if(!S_AXIS_ARESETN)
 	    begin
 	      read_pointer <= 0;
 		  reads_done <= '0;
 		  DATA_INPUT_VALID <= '0;
+		  DATA_INPUT_STARTOFPACKET <= '0;		  
+		  DATA_INPUT_ENDOFPACKET <= '0;
+		  writes_done_ack <= '0;
 	    end  
-	  else
-	    if (read_pointer <= NUMBER_OF_INPUT_WORDS-1)
-	      begin
-	        if (DATA_INPUT_READY)
-	          begin
-	            // read pointer is incremented after every read from the FIFO
-	            // when DATA_INPUT_READY signal is enabled.
-	            read_pointer <= read_pointer + 1;
-	            reads_done <= '0;
-				DATA_INPUT_VALID <= '1;				
-	          end
-	          if (read_pointer == NUMBER_OF_INPUT_WORDS-1)
-	            begin
-	              // reads_done is asserted when NUMBER_OF_INPUT_WORDS numbers of streaming data 
-	              // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
-	              writes_done <= '1;
-				  end_of_frame <= '1;
-				  DATA_INPUT_VALID <= '0;				  
-	            end
-	      end  
+	  else if (read_pointer < NUMBER_OF_INPUT_WORDS-1)
+	    begin
+		  if (writes_done)
+			begin
+			  read_pointer <= 0;
+			  writes_done_ack <= '1;			  
+			  // read is faster than write, if start of frame starts before write ends it has to stall but fir_avl cannot stall
+			  DATA_INPUT_VALID <= '1; 				  
+			  DATA_INPUT_STARTOFPACKET <= '1;
+			end
+		  else
+		    writes_done_ack <= '0;
+			  
+		  if (DATA_INPUT_READY)
+	        begin
+	          // read pointer is incremented after every read from the FIFO
+	          // when DATA_INPUT_READY signal is enabled.
+	          read_pointer <= read_pointer + 1;
+			  DATA_INPUT_STARTOFPACKET <= '0;
+			  DATA_INPUT_ENDOFPACKET <= '0;			
+	        end		  
+		end  	
+	  else if (read_pointer == NUMBER_OF_INPUT_WORDS-1) // all data regardless
+		begin
+		  // reads_done is asserted when NUMBER_OF_INPUT_WORDS numbers of streaming data 
+		  // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
+		  if (!reads_done)
+			reads_done <= '1;
+		  else if (reads_done_ack)
+		    reads_done <= '0;			  
+		  DATA_INPUT_ENDOFPACKET <= '1;
+		  DATA_INPUT_VALID <= '0;					
+		end		
 	end
 
-	assign DATA_INPUT_STARTOFPACKET = start_of_frame;
-	assign DATA_INPUT_ENDOFPACKET = end_of_frame;
 	assign DATA_INPUT_DATA = stream_data_fifo[read_pointer];
 
 	endmodule

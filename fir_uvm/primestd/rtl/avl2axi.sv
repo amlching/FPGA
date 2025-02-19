@@ -8,7 +8,8 @@ module avl2axi #
 		// Do not modify the parameters beyond this line
 
 		// AXI4Stream source: Data Width
-		parameter integer DATA_WIDTH	= 16
+		parameter integer DATA_WIDTH	= 16,
+		parameter integer NUM_OF_SAMPLES = 1000 
 	)
 	(
 		// Avalon st tx port
@@ -46,7 +47,7 @@ module avl2axi #
 	endfunction
 
 	// Total number of input data.
-	localparam NUMBER_OF_OUTPUT_WORDS  = 2000/FACTOR;
+	localparam NUMBER_OF_OUTPUT_WORDS  = NUM_OF_SAMPLES/FACTOR+4;
 	// bit_num gives the minimum number of bits needed to address 'NUMBER_OF_OUTPUT_WORDS' size of FIFO.
 	localparam bit_num  = clogb2(NUMBER_OF_OUTPUT_WORDS-1);
 	// Define the states of state machine
@@ -65,25 +66,26 @@ module avl2axi #
 	reg start_of_frame;
 	// end of frame for avalong st rx
 	reg end_of_frame;
-	// FIFO full flag
-	reg fifo_full_flag;
 	// FIFO write pointer
 	reg [bit_num-1:0] write_pointer;
 	// sink has accepted all the streaming data and stored in FIFO
 	reg writes_done;
+	// ack and clears writes_done
+	reg writes_done_ack; 	
 	// FIFO read pointer
 	reg [bit_num-1:0] read_pointer;
 	// sink has emptied all the streaming data and from FIFO
 	reg reads_done;
-	// I/O Connections assignments
+	// ack and clears reads_done
+	reg reads_done_ack; 	
 
 	assign DATA_OUTPUT_READY	= avl_output_ready;
 	
 	// Control state machine implementation
-	always @(posedge M_AXIS_ACLK) 
+	always @(posedge M_AXIS_ACLK or negedge M_AXIS_ARESETN) 
 	begin  
 	  if (!M_AXIS_ARESETN) 
-	  // Synchronous reset (active low)
+	  // asynchronous reset (active low)
 	    begin
 	      mst_exec_state <= IDLE;
 	    end  
@@ -121,32 +123,46 @@ module avl2axi #
 	// 
 	// The example design source is ready to send the M_AXIS_TDATA when
 	// the FIFO is filled with NUMBER_OF_OUTPUT_WORDS number of output words.
-	assign avl_output_ready = ((mst_exec_state == WRITE_FIFO) && (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1));
-
-	always@(posedge M_AXIS_ACLK)
+	//assign avl_output_ready = ((mst_exec_state == WRITE_FIFO) && (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1));
+	// fir_avl require FIFO to be ready to start convolution so don't wait to enter WRITE_FIFO state otherwise will deadlock
+	assign avl_output_ready = (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1);
+	
+	always@(posedge M_AXIS_ACLK or negedge M_AXIS_ARESETN) 
 	begin
 	  if(!M_AXIS_ARESETN)
 	    begin
 	      write_pointer <= 0;
 	      writes_done <= '0;
+		  reads_done_ack <= '0;
 	    end  
 	  else
 	    if (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1)
 	      begin
+			if (reads_done) 
+			  begin
+				write_pointer <= 0;
+				reads_done_ack <= '1;
+			  end 
+			else
+			  reads_done_ack <= '0;
+			  
 	        if (fifo_wren)
 	          begin
 	            // write pointer is incremented after every write to the FIFO
 	            // when FIFO write signal is enabled.
 	            write_pointer <= write_pointer + 1;
-	            writes_done <= '0;
-				
+	            writes_done <= '0;				
 	          end
-	          if ((write_pointer == NUMBER_OF_OUTPUT_WORDS-1)|| DATA_OUTPUT_ENDOFPACKET)
-	            begin
-	              // reads_done is asserted when NUMBER_OF_OUTPUT_WORDS numbers of streaming data 
-	              // has been written to the FIFO which is also marked by DATA_OUTPUT_ENDOFPACKET(kept for optional usage).
+
+	        if ((write_pointer == NUMBER_OF_OUTPUT_WORDS-1)|| DATA_OUTPUT_ENDOFPACKET)
+	          begin
+	            // reads_done is asserted when NUMBER_OF_OUTPUT_WORDS numbers of streaming data 
+	            // has been written to the FIFO which is also marked by DATA_OUTPUT_ENDOFPACKET(kept for optional usage).
+				if(!writes_done)
 	              writes_done <= '1;
-	            end
+				else if(writes_done_ack)
+				  writes_done <= '0;
+	          end
 	      end  
 	end
 
@@ -165,7 +181,7 @@ module avl2axi #
 
 	// Hook up axi-st tx signals
 	//! data_input_ready indicates that the unit accepts transactions to read FIFO
-	always@(posedge M_AXIS_ACLK)
+	always@(posedge M_AXIS_ACLK or negedge M_AXIS_ARESETN) 
 	begin
 	  if(!M_AXIS_ARESETN)
 	    begin
@@ -173,27 +189,38 @@ module avl2axi #
 		  reads_done <= '0;
 		  M_AXIS_TVALID <= '0;
 		  M_AXIS_TLAST <= '0;
+		  writes_done_ack <= '0;
 	    end  
-	  else
-	    if (read_pointer <= NUMBER_OF_OUTPUT_WORDS-1)
-	      begin
-	        if (M_AXIS_TREADY)
-	          begin
-	            // read pointer is incremented after every read from the FIFO
-	            // when M_AXIS_TREADY signal is enabled.
-	            read_pointer <= read_pointer + 1;
-	            reads_done <= '0;
-				M_AXIS_TVALID <= '1;				
-	          end
-	          if (read_pointer == NUMBER_OF_OUTPUT_WORDS-1) // early end of data or all data
-	            begin
-	              // reads_done is asserted when NUMBER_OF_OUTPUT_WORDS numbers of streaming data 
-	              // has been written to the FIFO which is also marked by M_AXIS_TLAST(kept for optional usage).
-	              reads_done <= '1;
-				  M_AXIS_TVALID <= '0;
-				  M_AXIS_TLAST <= '1;
-	            end
-	      end
+	  else if (read_pointer < NUMBER_OF_OUTPUT_WORDS-1)
+	    begin
+		  if (writes_done)
+			begin
+			  read_pointer <= 0;
+			  writes_done_ack <= '1;
+			  M_AXIS_TVALID <= '1;
+			end
+		  else
+			writes_done_ack <= '0;
+			  
+	      if (M_AXIS_TREADY)
+	        begin
+	          // read pointer is incremented after every read from the FIFO
+	          // when M_AXIS_TREADY signal is enabled.
+	          read_pointer <= read_pointer + 1;
+	          reads_done <= '0;
+	        end
+		end			
+	  else if (read_pointer == NUMBER_OF_OUTPUT_WORDS-1) // all data regardless
+	    begin
+	      // reads_done is asserted when NUMBER_OF_OUTPUT_WORDS numbers of streaming data 
+	      // has been written to the FIFO which is also marked by M_AXIS_TLAST(kept for optional usage).
+		  if (!reads_done)
+			reads_done <= '1;
+		  else if (reads_done_ack)
+		    reads_done <= '0;
+		  M_AXIS_TVALID <= '0;
+		  M_AXIS_TLAST <= '1;
+	    end
 	end
 
 	// Data out

@@ -11,7 +11,7 @@
 module fir_top	#(
 		parameter integer FACTOR = 2,
 		parameter integer DATA_WIDTH = 16,
-		parameter integer NUM_OF_SAMPLES = 1000
+		parameter integer NUM_OF_SAMPLES = 2000
 	)
 	(
 		// AXI4Stream Clock

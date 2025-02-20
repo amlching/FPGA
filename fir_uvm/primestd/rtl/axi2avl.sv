@@ -9,7 +9,7 @@ module axi2avl #
 
 		// AXI4Stream sink: Data Width
 		parameter integer DATA_WIDTH	= 16,
-		parameter integer NUM_OF_SAMPLES = 1000
+		parameter integer NUM_OF_SAMPLES = 2000
 	)
 	(
 		// Avalon st rx port
@@ -69,14 +69,10 @@ module axi2avl #
 	reg [bit_num-1:0] write_pointer;
 	// sink has accepted all the streaming data and stored in FIFO
 	reg writes_done;
-	// ack and clears writes_done
-	reg writes_done_ack; 
 	// FIFO read pointer
 	reg [bit_num-1:0] read_pointer;
 	// sink has emptied all the streaming data and from FIFO
 	reg reads_done;
-	// ack and clears reads_done
-	reg reads_done_ack; 
 	
 	assign S_AXIS_TREADY	= axis_tready;
 	// Control state machine implementation
@@ -132,19 +128,10 @@ module axi2avl #
 	    begin
 	      write_pointer <= 0;
 	      writes_done <= '0;
-		  reads_done_ack <= '0;
 	    end  
 	  else
 	    if (write_pointer <= NUMBER_OF_INPUT_WORDS-1)
-	      begin
-	        if (reads_done)
-			  begin
-			    write_pointer <= 0;
-			    reads_done_ack <= '1;
-			  end 
-			else
-			  reads_done_ack <= '0;
-			  
+	      begin	  
 			if (fifo_wren)
 	          begin
 	            // write pointer is incremented after every write to the FIFO
@@ -157,10 +144,8 @@ module axi2avl #
 	          begin
 	            // reads_done is asserted when NUMBER_OF_INPUT_WORDS numbers of streaming data 
 	            // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
-				if(!writes_done)
-	              writes_done <= '1;
-				else if(writes_done_ack)
-				  writes_done <= '0;
+				writes_done <= '1;
+				write_pointer <= 0;
 	          end
 	      end  
 	end
@@ -189,10 +174,11 @@ module axi2avl #
 		  DATA_INPUT_VALID <= '0;
 		  DATA_INPUT_STARTOFPACKET <= '0;		  
 		  DATA_INPUT_ENDOFPACKET <= '0;
-		  writes_done_ack <= '0;
 	    end  
 	  else if (read_pointer < NUMBER_OF_INPUT_WORDS-1)
 	    begin
+		  DATA_INPUT_ENDOFPACKET <= '0;
+		  reads_done <= '0;
 		  if (fifo_almost_full)
 			begin
 			  read_pointer <= 0;		  
@@ -200,11 +186,6 @@ module axi2avl #
 			  DATA_INPUT_VALID <= '1; 				  
 			  DATA_INPUT_STARTOFPACKET <= '1;
 			end
-	
-		  if (writes_done)
-			  writes_done_ack <= '1;			  
-		  else
-		    writes_done_ack <= '0;
 	
 		  if (DATA_INPUT_READY)
 	        begin
@@ -219,12 +200,10 @@ module axi2avl #
 		begin
 		  // reads_done is asserted when NUMBER_OF_INPUT_WORDS numbers of streaming data 
 		  // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
-		  if (!reads_done)
-			reads_done <= '1;
-		  else if (reads_done_ack)
-		    reads_done <= '0;			  
+		  reads_done <= '1;
 		  DATA_INPUT_ENDOFPACKET <= '1;
-		  DATA_INPUT_VALID <= '0;					
+		  DATA_INPUT_VALID <= '0;
+		  read_pointer <= 0;
 		end		
 	end
 

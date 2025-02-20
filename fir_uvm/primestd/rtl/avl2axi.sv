@@ -9,7 +9,7 @@ module avl2axi #
 
 		// AXI4Stream source: Data Width
 		parameter integer DATA_WIDTH	= 16,
-		parameter integer NUM_OF_SAMPLES = 1000 
+		parameter integer NUM_OF_SAMPLES = 2000 
 	)
 	(
 		// Avalon st tx port
@@ -47,7 +47,7 @@ module avl2axi #
 	endfunction
 
 	// Total number of input data.
-	localparam NUMBER_OF_OUTPUT_WORDS  = NUM_OF_SAMPLES/FACTOR+4;
+	localparam NUMBER_OF_OUTPUT_WORDS  = NUM_OF_SAMPLES/FACTOR; // output packet number includes 3 words of header and 1 error word
 	// bit_num gives the minimum number of bits needed to address 'NUMBER_OF_OUTPUT_WORDS' size of FIFO.
 	localparam bit_num  = clogb2(NUMBER_OF_OUTPUT_WORDS-1);
 	// Define the states of state machine
@@ -72,9 +72,7 @@ module avl2axi #
 	// FIFO write pointer
 	reg [bit_num-1:0] write_pointer;
 	// sink has accepted all the streaming data and stored in FIFO
-	reg writes_done;
-	// ack and clears writes_done
-	reg writes_done_ack; 	
+	reg writes_done; 	
 	// FIFO read pointer
 	reg [bit_num-1:0] read_pointer;
 	// sink has emptied all the streaming data and from FIFO
@@ -138,19 +136,10 @@ module avl2axi #
 	    begin
 	      write_pointer <= 0;
 	      writes_done <= '0;
-		  reads_done_ack <= '0;
 	    end  
 	  else
 	    if (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1)
 	      begin
-			if (reads_done) 
-			  begin
-				write_pointer <= 0;
-				reads_done_ack <= '1;
-			  end 
-			else
-			  reads_done_ack <= '0;
-			  
 	        if (fifo_wren)
 	          begin
 	            // write pointer is incremented after every write to the FIFO
@@ -163,10 +152,8 @@ module avl2axi #
 	          begin
 	            // reads_done is asserted when NUMBER_OF_OUTPUT_WORDS numbers of streaming data 
 	            // has been written to the FIFO which is also marked by DATA_OUTPUT_ENDOFPACKET(kept for optional usage).
-				if(!writes_done)
-	              writes_done <= '1;
-				else if(writes_done_ack)
-				  writes_done <= '0;
+	            writes_done <= '1;
+				write_pointer <= 0;
 	          end
 	      end  
 	end
@@ -194,42 +181,36 @@ module avl2axi #
 		  reads_done <= '0;
 		  M_AXIS_TVALID <= '0;
 		  M_AXIS_TLAST <= '0;
-		  writes_done_ack <= '0;
 	    end  
 	  else if (read_pointer < NUMBER_OF_OUTPUT_WORDS-1)
 	    begin
+		  M_AXIS_TLAST <= '0;
+		  reads_done <= '0;
 		  if (fifo_almost_full)
 			begin
 			  read_pointer <= 0;
 			  M_AXIS_TVALID <= '1;
 			end
-
-		  if (writes_done)
-			writes_done_ack <= '1;
-		  else
-			writes_done_ack <= '0;
 			  
 	      if (M_AXIS_TREADY)
 	        begin
 	          // read pointer is incremented after every read from the FIFO
 	          // when M_AXIS_TREADY signal is enabled.
 	          read_pointer <= read_pointer + 1;
-	          reads_done <= '0;
 	        end
 		end			
 	  else if (read_pointer == NUMBER_OF_OUTPUT_WORDS-1) // all data regardless
 	    begin
 	      // reads_done is asserted when NUMBER_OF_OUTPUT_WORDS numbers of streaming data 
 	      // has been written to the FIFO which is also marked by M_AXIS_TLAST(kept for optional usage).
-		  if (!reads_done)
-			reads_done <= '1;
-		  else if (reads_done_ack)
-		    reads_done <= '0;
+		  reads_done <= '1;
 		  M_AXIS_TVALID <= '0;
 		  M_AXIS_TLAST <= '1;
+		  read_pointer <= 0;			  
 	    end
 	end
 
+	
 	// Data out
 	assign M_AXIS_TDATA = stream_data_fifo[read_pointer][DATA_WIDTH-1:0];
 

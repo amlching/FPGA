@@ -57,6 +57,9 @@ module avl2axi #
 
 	                WRITE_FIFO  = 1'b1; // In this state FIFO is written with the
 	                                    // input stream data M_AXIS_TDATA 
+	// Triggers start of read FIFO
+	wire fifo_almost_full;
+	// Triggers start of write FIFO
 	wire avl_output_ready;
 	// State variable
 	reg mst_exec_state;     
@@ -126,6 +129,8 @@ module avl2axi #
 	//assign avl_output_ready = ((mst_exec_state == WRITE_FIFO) && (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1));
 	// fir_avl require FIFO to be ready to start convolution so don't wait to enter WRITE_FIFO state otherwise will deadlock
 	assign avl_output_ready = (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1);
+	// almost full flag as a pulse to trigger read, read is same speed as write, every second clock there is a write transcation after 3 words of header
+	assign fifo_almost_full = (write_pointer == 3);
 	
 	always@(posedge M_AXIS_ACLK or negedge M_AXIS_ARESETN) 
 	begin
@@ -193,12 +198,14 @@ module avl2axi #
 	    end  
 	  else if (read_pointer < NUMBER_OF_OUTPUT_WORDS-1)
 	    begin
-		  if (writes_done)
+		  if (fifo_almost_full)
 			begin
 			  read_pointer <= 0;
-			  writes_done_ack <= '1;
 			  M_AXIS_TVALID <= '1;
 			end
+
+		  if (writes_done)
+			writes_done_ack <= '1;
 		  else
 			writes_done_ack <= '0;
 			  

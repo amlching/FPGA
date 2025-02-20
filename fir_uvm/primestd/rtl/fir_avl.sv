@@ -59,7 +59,7 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 	logic data_output_valid_int;
 	logic data_output_startofpacket_int;
 	logic data_output_endofpacket_int;
-	logic data_output_data_int;
+	logic [DATA_WIDTH-1:0]data_output_data_int;
 	
 	// register output signals
 	always_ff @ (posedge clk or posedge reset)

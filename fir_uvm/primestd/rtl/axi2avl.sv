@@ -57,6 +57,9 @@ module axi2avl #
 
 	                WRITE_FIFO  = 1'b1; // In this state FIFO is written with the
 	                                    // input stream data S_AXIS_TDATA 
+	// Triggers start of read FIFO
+	wire fifo_almost_full;
+	// Triggers start of write FIFO
 	wire axis_tready;
 	// State variable
 	reg mst_exec_state;     
@@ -119,6 +122,9 @@ module axi2avl #
 	// The example design sink is always ready to accept the S_AXIS_TDATA  until
 	// the FIFO is not filled with NUMBER_OF_INPUT_WORDS number of input words.
 	assign axis_tready = ((mst_exec_state == WRITE_FIFO) && (write_pointer <= NUMBER_OF_INPUT_WORDS-1));
+	
+	// almost full flag as a pulse to trigger read, read is two times faster than write
+	assign fifo_almost_full = (write_pointer == NUMBER_OF_INPUT_WORDS/2);
 	
 	always@(posedge S_AXIS_ACLK or negedge S_AXIS_ARESETN)
 	begin
@@ -187,17 +193,19 @@ module axi2avl #
 	    end  
 	  else if (read_pointer < NUMBER_OF_INPUT_WORDS-1)
 	    begin
-		  if (writes_done)
+		  if (fifo_almost_full)
 			begin
-			  read_pointer <= 0;
-			  writes_done_ack <= '1;			  
+			  read_pointer <= 0;		  
 			  // read is faster than write, if start of frame starts before write ends it has to stall but fir_avl cannot stall
 			  DATA_INPUT_VALID <= '1; 				  
 			  DATA_INPUT_STARTOFPACKET <= '1;
 			end
+	
+		  if (writes_done)
+			  writes_done_ack <= '1;			  
 		  else
 		    writes_done_ack <= '0;
-			  
+	
 		  if (DATA_INPUT_READY)
 	        begin
 	          // read pointer is incremented after every read from the FIFO

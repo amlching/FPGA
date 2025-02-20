@@ -52,9 +52,9 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 
 	output [OUTPUT_WIDTH-1:0] source_data;
 	output source_valid;
-	output [1:0] source_error;
+	output wire [1:0] source_error;
 
-	wire signed [COEFF_WIDTH-1:0] w_coeff[0:20];
+	wire signed [COEFF_WIDTH-1:0] w_coeff[0:NUM_TAPS-1];
 	
 	reg [INPUT_WIDTH-1:0] r_data[0:NUM_TAPS-1];	
 	// When you multiply two numbers of N-bit and M-bit the output dynamic of the multiplication result is (N+M)-bits.
@@ -93,11 +93,11 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 	assign w_coeff[5] = COEFF_5;
 	assign w_coeff[6] = COEFF_6;
 	assign w_coeff[7] = COEFF_7;
-	assign w_coeff[0] = COEFF_8;
+	assign w_coeff[8] = COEFF_8;
 	assign w_coeff[9] = COEFF_9;
 	assign w_coeff[10] = COEFF_10;
 	assign w_coeff[11] = COEFF_11;
-	assign w_coeff[11] = COEFF_12;
+	assign w_coeff[12] = COEFF_12;
 	assign w_coeff[13] = COEFF_13;
 	assign w_coeff[14] = COEFF_14;
 	assign w_coeff[15] = COEFF_15;	
@@ -237,11 +237,11 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 		end
 	end
 	
-	assign source_data  = r_add_st5; // truncate sign bits
+	assign source_data  = r_add_st5[OUTPUT_WIDTH-1:0]; // truncate sign bits
 	assign source_valid = r_source_valid;
 
 	// real time error not part of avalon data
-	assign source_error[0] = r_add_st5[OUTPUT_WIDTH] ^ r_add_st5[OUTPUT_WIDTH+1] ^ r_add_st5[OUTPUT_WIDTH+2] ^ r_add_st5[OUTPUT_WIDTH+4]; // xor truncated overflow bits, if true there is overflow
+	assign source_error[0] = r_add_st5[OUTPUT_WIDTH] ^ r_add_st5[OUTPUT_WIDTH+1] ^ r_add_st5[OUTPUT_WIDTH+2] ^ r_add_st5[OUTPUT_WIDTH+3]; // xor truncated overflow bits, if true there is overflow
 	assign source_error[1] = '0; // reserve for future to detect if input does not return to zero causing FIR not to work
 		
 

@@ -149,7 +149,10 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 					SENSOR_TYPE_FIRST_PART: begin
 						data_output_startofpacket_int	<= '1;
 					end
-					(SCAN_COUNT_FIRST_PART | SCAN_COUNT_SECOND_PART): begin
+					SCAN_COUNT_FIRST_PART: begin
+						data_output_startofpacket_int	<= '0;
+					end
+					SCAN_COUNT_SECOND_PART: begin
 						data_output_startofpacket_int	<= '0;
 					end
 				endcase;  		    

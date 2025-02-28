@@ -1,3 +1,4 @@
+
 //------------------------------------------------------------------------------------------------------
 // @file            fir_lowpass.v
 // @brief           This unit infers fir filter, 21 taps, decimation factor of 2 or or 1 (none), 
@@ -50,13 +51,13 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 	input sink_valid;
 	input [1:0] sink_error; // reserved for future use
 
-	output [OUTPUT_WIDTH-1:0] source_data;
+	output signed [OUTPUT_WIDTH-1:0] source_data;
 	output source_valid;
 	output wire [1:0] source_error;
 
 	wire signed [COEFF_WIDTH-1:0] w_coeff[0:NUM_TAPS-1];
 	
-	reg [INPUT_WIDTH-1:0] r_data[0:NUM_TAPS-1];	
+	reg signed [INPUT_WIDTH-1:0] r_data[0:NUM_TAPS-1];	
 	// When you multiply two numbers of N-bit and M-bit the output dynamic of the multiplication result is (N+M)-bits.
 	// 16 bit coeff x 16 bit data = 32 bit length
 	reg signed [COEFF_WIDTH+INPUT_WIDTH-1:0] r_mult[0:NUM_TAPS-1];
@@ -69,8 +70,6 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 	reg r_source_valid;
 	reg [5:0] r_input_enable; 
 	reg [1:0] r_decimation_count;
-	reg [31:0] r_input_valid_count;
-	reg [31:0] r_output_valid_count;
 
 	// @anchor filter-calculation
 	// @brief fir filter, N taps with decimation factor 
@@ -110,17 +109,17 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 	// capture input and push data down to next array	
 	always @ (posedge clk or negedge reset_n) begin
 		if(!reset_n) begin
-			for(int j=0; j<NUM_TAPS; j=j+1) begin
-				r_data[j] <= '0;
-			end
-			r_input_valid_count <= '0;
-		end else if (sink_valid) begin
-			for(int j=NUM_TAPS-1; j>0; j=j-1) begin
-				r_data[j] <= r_data[j-1];
-			end
-			r_data[0] <= sink_data;
-			r_input_valid_count <= r_input_valid_count + 1;
-		end
+		  for(int j=0; j<NUM_TAPS; j=j+1)
+			r_data[j] <= '0;
+		end else if (sink_valid) 
+		  begin
+			//r_data[0] <= signed'(16'(sink_data)); // start at low end of array
+			//for(int j=NUM_TAPS-1; j>0; j=j-1)
+			//  r_data[j] <= r_data[j-1]; // shift up
+			for(int j=NUM_TAPS-1; j>0; j=j-1)
+			  r_data[j-1] <= r_data[j]; // shift down			
+			r_data[NUM_TAPS-1] <= signed'(16'(sink_data)); // start at high end of array
+		  end
 	end	
 
 	// enable next stage addition only when new sample comes in
@@ -156,9 +155,10 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 			end			
 		end else if (r_input_enable[1]) begin
 			for(int k=0; k<10; k=k+1) begin
-				r_add_st1[k] <= {r_mult[2*k][COEFF_WIDTH+INPUT_WIDTH-1], r_mult[2*k]} + {r_mult[2*k+1][COEFF_WIDTH+INPUT_WIDTH-1], r_mult[2*k+1]}; // resize sign bit to +1 for carryover
+				// resize sign bit to +1 for carryover
+				r_add_st1[k] <= {r_mult[2*k][COEFF_WIDTH+INPUT_WIDTH-1], r_mult[2*k]} + {r_mult[2*k+1][COEFF_WIDTH+INPUT_WIDTH-1], r_mult[2*k+1]};
 			end	 
-			r_add_st1[10] <= {r_mult[20][COEFF_WIDTH+INPUT_WIDTH-1], r_mult[20]}; // 21st tap resize to +1 with sign bit		
+			r_add_st1[10] <= {r_mult[20][COEFF_WIDTH+INPUT_WIDTH-1], r_mult[20]}; // 21st tap resize to +1 with sign bit			
 		end
 	end
 
@@ -170,7 +170,8 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 			end			
 		end else if (r_input_enable[2]) begin
 			for(int k=0; k<8; k=k+1) begin
-				r_add_st2[k] <= {r_add_st1[2*k][COEFF_WIDTH+INPUT_WIDTH], r_add_st1[2*k]} + {r_add_st1[2*k+1][COEFF_WIDTH+INPUT_WIDTH], r_add_st1[2*k+1]}; // resize sign bit to +1 for carryover
+				// resize sign bit to +1 for carryover
+				r_add_st2[k] <= {r_add_st1[2*k][COEFF_WIDTH+INPUT_WIDTH], r_add_st1[2*k]} + {r_add_st1[2*k+1][COEFF_WIDTH+INPUT_WIDTH], r_add_st1[2*k+1]};
 			end	 	
 		end
 	end	
@@ -182,8 +183,9 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 				r_add_st3[k] <= '0;  
 			end			
 		end else if (r_input_enable[3]) begin
-			for(int k=0; k<3; k=k+1) begin
-				r_add_st3[k] <= {r_add_st2[2*k][COEFF_WIDTH+INPUT_WIDTH+1], r_add_st2[2*k]} + {r_add_st2[2*k+1][COEFF_WIDTH+INPUT_WIDTH+1], r_add_st2[2*k+1]}; // resize sign bit to +1 for carryover
+			for(int k=0; k<4; k=k+1) begin
+				// resize sign bit to +1 for carryover
+				r_add_st3[k] <= {r_add_st2[2*k][COEFF_WIDTH+INPUT_WIDTH+1], r_add_st2[2*k]} + {r_add_st2[2*k+1][COEFF_WIDTH+INPUT_WIDTH+1], r_add_st2[2*k+1]};
 			end	 	
 		end
 	end
@@ -196,7 +198,8 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 			end			
 		end else if (r_input_enable[4]) begin
 			for(int k=0; k<2; k=k+1) begin
-				r_add_st4[k] <= {r_add_st3[2*k][COEFF_WIDTH+INPUT_WIDTH+2], r_add_st3[2*k]} + {r_add_st3[2*k+1][COEFF_WIDTH+INPUT_WIDTH+2], r_add_st3[2*k+1]}; // resize sign bit to +1 for carryover
+				// resize sign bit to +1 for carryover
+				r_add_st4[k] <= {r_add_st3[2*k][COEFF_WIDTH+INPUT_WIDTH+2], r_add_st3[2*k]} + {r_add_st3[2*k+1][COEFF_WIDTH+INPUT_WIDTH+2], r_add_st3[2*k+1]};
 			end	 	
 		end
 	end	
@@ -206,7 +209,8 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 		if(!reset_n) begin
 			r_add_st5 <= '0;  		
 		end else if (r_input_enable[5]) begin
-			r_add_st5 <= {r_add_st4[0][COEFF_WIDTH+INPUT_WIDTH+3], r_add_st4[0]} + {r_add_st4[1][COEFF_WIDTH+INPUT_WIDTH+3], r_add_st4[1]}; // resize sign bit to +1 for carryover	 	
+			// resize sign bit to +1 for carryover
+			r_add_st5 <= {r_add_st4[0][COEFF_WIDTH+INPUT_WIDTH+3], r_add_st4[0]} + {r_add_st4[1][COEFF_WIDTH+INPUT_WIDTH+3], r_add_st4[1]};	 	 	
 		end
 	end
 	
@@ -214,30 +218,29 @@ module fir_lowpass(clk, reset_n, sink_data, sink_valid, sink_error, source_data,
 	always @ (posedge clk or negedge reset_n) begin
 		if(!reset_n) begin
 			r_decimation_count <= '0;
-			r_source_valid <= 1'b0;
-			r_output_valid_count <= '0;		
+			r_source_valid <= '0;		
 		// start after 6th input valid and does not handle back pressure
 		end else if (r_input_enable[5]) begin
 			if (r_decimation_count < DECIMATE_FACTOR-1) begin
 				if (r_decimation_count == '0) begin
-					r_source_valid <= 1'b1;
-					r_output_valid_count <= r_output_valid_count + 1;
+					r_source_valid <= '1;
 				end
 				r_decimation_count <= r_decimation_count + 1;
 			end else begin // (decimation_count = DECIMATE_FACTOR-1) then 
 				r_decimation_count <= '0;
 				if (DECIMATE_FACTOR == 1) begin
-					r_source_valid <= 1'b1;
+					r_source_valid <= '1;
 				end else begin
-					r_source_valid <= 1'b0;
+					r_source_valid <= '0;
 				end
 			end
 		end else begin
-			r_source_valid <= 1'b0;
+			r_source_valid <= '0;
 		end
 	end
 	
-	assign source_data  = r_add_st5[OUTPUT_WIDTH-1:0]; // truncate sign bits
+	// truncate sign bits to 33rd bit
+	assign source_data  = signed'(OUTPUT_WIDTH'(r_add_st5));
 	assign source_valid = r_source_valid;
 
 	// real time error not part of avalon data

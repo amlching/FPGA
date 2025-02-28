@@ -24,8 +24,10 @@ SOFTWARE. */
 class axi4_slave_seq_item extends uvm_sequence_item;
 
     
-    randc bit ready_before_valid; // 0-> valid before ready , 1->ready before valid
-    randc int clk_count;
+    randc 	bit ready_before_valid; // 0-> valid before ready , 1->ready before valid
+    randc   int clk_count;
+	rand	bit [`DATA_WIDTH-1:0] data[`COUNT][$]; // added to monitor data
+	
     //Utility and Field macros,
     `uvm_object_utils_begin(axi4_slave_seq_item)
     `uvm_object_utils_end

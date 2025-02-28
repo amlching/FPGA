@@ -23,8 +23,9 @@ SOFTWARE. */
 class axi4_env extends uvm_env;
 
     `uvm_component_utils(axi4_env)
-    axi4_master_agent master_agent;
-    axi4_slave_agent  slave_agent;
+    axi4_master_agent master_agent; // agent handle
+    axi4_slave_agent  slave_agent; 	// agent handle
+	scoreboard sb0; 				// scoreboard handle
 
     function new(string name="axi4_env", uvm_component parent = null);
         super.new(name, parent);
@@ -34,8 +35,13 @@ class axi4_env extends uvm_env;
         super.build_phase(phase);
         master_agent = axi4_master_agent::type_id::create("master_agent", this);
         slave_agent  = axi4_slave_agent::type_id::create("slave_agent", this);
+		sb0	 		 = scoreboard::type_id::create("sb0", this);
     endfunction
 
+	virtual function void connect_phase(uvm_phase phase);
+      super.connect_phase(phase);
+      slave_agent.slave_monitor.mon_analysis_port.connect(sb0.m_analysis_imp);
+	endfunction
 
 
 endclass : axi4_env

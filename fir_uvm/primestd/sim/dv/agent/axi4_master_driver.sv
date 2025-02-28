@@ -66,7 +66,7 @@ class axi4_master_driver extends uvm_driver#(axi4_master_seq_item);
                     @(posedge vif.clk);
                     end
                     vif.s_axis_tvalid   <= 1;
-                    print_debug();
+                    //print_debug();
                     vif.s_axis_tdata    <= req.data.pop_front;
                     vif.s_tid            <= req.id;
                     vif.s_tdest           <= req.dest;
@@ -117,12 +117,12 @@ class axi4_master_driver extends uvm_driver#(axi4_master_seq_item);
             end
     endfunction
 
-    function void print_debug();
-        Print_handle = $fopen("data_debug_dump.txt","ab");
-        for(int j = 3; j>=0; j--)
-            $fdisplay(Print_handle,"|data_byte\t%b",req.data[0][(8*j+7)-: 8],"\t|time\t",$time, "\t|strb_bit\t\t",req.tstrb[0][j],"|","\t\t");
-        $fdisplay(Print_handle,"|id\t\t\t   ",this.req.id,"|data\t\t%h",this.req.data[0],"|tstrb\t\t\t%b",this.req.tstrb[0],"|tkeep\t\t %b",this.req.tkeep[0],"|tdest\t",this.req.dest,"\t|time\t",$time,"|");
-        $fclose(Print_handle);
-    endfunction
+    //function void print_debug();
+    //    Print_handle = $fopen("data_debug_dump.txt","ab");
+    //    for(int j = 3; j>=0; j--)
+    //        $fdisplay(Print_handle,"|data_byte\t%b",req.data[0][(8*j+7)-: 8],"\t|time\t",$time, "\t|strb_bit\t\t",req.tstrb[0][j],"|","\t\t");
+    //    $fdisplay(Print_handle,"|id\t\t\t   ",this.req.id,"|data\t\t%h",this.req.data[0],"|tstrb\t\t\t%b",this.req.tstrb[0],"|tkeep\t\t %b",this.req.tkeep[0],"|tdest\t",this.req.dest,"\t|time\t",$time,"|");
+    //    $fclose(Print_handle);
+    //endfunction
 
 endclass : axi4_master_driver

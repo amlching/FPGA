@@ -25,7 +25,7 @@ class axi4_master_seq_item extends uvm_sequence_item;
 
     rand    bit [(`DATA_WIDTH)-1 : 0]               data[$];
     randc   int                                     clk_count;
-    randc   bit [6:0]                               id;
+    randc   bit [7:0]                               id;
     randc   bit [3:0]                               dest;
     rand    bit [10:0]                              size;
     rand    bit [(`DATA_WIDTH/8)-1 : 0]             tstrb[$];

@@ -33,7 +33,7 @@ class axi4_slave_sanity_sequence extends uvm_sequence#(axi4_slave_seq_item);
         begin
             req = axi4_slave_seq_item::type_id::create("req");
 			start_item(req);
-            //assert(req.randomize());//with{ready_before_valid == 0;});
+            //assert(req.randomize());//with{ready_before_valid == 0;}); // lite license doesn't allow randomize
 			//for now check analog waveforms that high frequency signals are filtered and low freqency signals passes through in wave.do
             finish_item(req);
         end

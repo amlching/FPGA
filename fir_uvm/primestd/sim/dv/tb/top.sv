@@ -32,11 +32,14 @@ import uvm_pkg::*;
 `include "./../agent/axi4_slave_driver.sv"
 `include "./../sequence/axi4_seqr.sv"
 `include "./../agent/axi4_master_agent.sv"
+`include "./../agent/axi4_slave_monitor.sv"
 `include "./../agent/axi4_slave_agent.sv"
+`include "./../env/scoreboard.sv"
 `include "./../env/axi4_env.sv"
 `include "./../sequence/axi4_master_sequence.sv"
 `include "./../sequence/axi4_slave_sequence.sv"
 `include "./../env/axi4_test.sv"
+
 
 // rtl files
 `include "./../rtl/fir_lowpass.sv"

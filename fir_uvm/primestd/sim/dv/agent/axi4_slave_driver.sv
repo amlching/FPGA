@@ -22,12 +22,10 @@ SOFTWARE. */
 class axi4_slave_driver extends uvm_driver#(axi4_slave_seq_item);
 
     `uvm_component_utils(axi4_slave_driver)
-
+  
     virtual axi_intf#(`DATA_WIDTH) vif;
     bit tr_complete,local_ready_before_valid;
-    bit [31:0] ar[bit[10:0]][$];
-    bit stream_data[];
-    int count;
+    bit [`DATA_WIDTH-1:0] ar[bit[7:0]][$]; // temporary associative array, queue for 8 bit id  
     int Print_handle; 
 
     function new(string name="axi4_slave_driver", uvm_component parent = null);
@@ -45,7 +43,7 @@ class axi4_slave_driver extends uvm_driver#(axi4_slave_seq_item);
     task run_phase(uvm_phase phase);
 	forever
 	    begin
-        $display("entering into slave driver ");
+        $display("entering into slave driver count");
 	        seq_item_port.get_next_item(req);
             drive_axi(req); 
             this.tr_complete = 0;
@@ -57,8 +55,7 @@ class axi4_slave_driver extends uvm_driver#(axi4_slave_seq_item);
     task drive_axi(axi4_slave_seq_item req);
         do begin
             @(posedge vif.clk)
-            //$display("enetred slave axi drive task");
-            count <= count + 1;
+            //$display("enetred slave axi drive task %d", count);
             if(!vif.rst)
             begin
             if(req.ready_before_valid == 1'b1 )
@@ -68,7 +65,7 @@ class axi4_slave_driver extends uvm_driver#(axi4_slave_seq_item);
             if(vif.m_axis_tvalid == 1)
             begin
                 local_ready_before_valid <= req.ready_before_valid;
-                ar[vif.m_tid].push_back(vif.s_axis_tdata);
+                ar[vif.m_tid].push_back(vif.m_axis_tdata); // push axi stream data into associative array
                 if(req.ready_before_valid == 1'b1)
                     vif.m_axis_tready <= 0;
                 else
@@ -77,7 +74,7 @@ class axi4_slave_driver extends uvm_driver#(axi4_slave_seq_item);
                     repeat(req.clk_count) @(posedge vif.clk);
                     vif.m_axis_tready <= 1; //put if else for ready before valid 
                 end 
-                this.tr_complete = 1;
+                this.tr_complete = 1;			
             end
             end
             else

@@ -41,9 +41,9 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 	states_onehot_t nextState;
 	
 	int header_part;
-	int SENSOR_TYPE_FIRST_PART = 0;
-	int SCAN_COUNT_FIRST_PART = 1;
-	int SCAN_COUNT_SECOND_PART = 2;
+	int SENSOR_TYPE_FIRST_PART = 1;
+	int SCAN_COUNT_FIRST_PART = 2;
+	int SCAN_COUNT_SECOND_PART = 3;
 	int length_in_count;
 	int length_out_count;
 
@@ -51,7 +51,7 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 	logic reset_fir_n;
 	logic [DATA_WIDTH-1:0]fir_data_in;
 	logic fir_valid_in;
-	logic [32:0]fir_data_out;
+	logic signed [32:0]fir_data_out;
 	logic [1:0]fir_error_out;
 	logic fir_data_out_valid;
 	
@@ -128,7 +128,7 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 					data_input_ready_int 		<= '1;
 				else
 					data_input_ready_int 		<= '0;
-				header_part 					= SENSOR_TYPE_FIRST_PART;
+				header_part 					= 0;
 				reset_fir_n 					<= '0;
 				fir_valid_in 					<= '0;
 				data_output_valid_int			<= '0;
@@ -173,7 +173,8 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 			proc_fir_data: begin	
 				fir_data_in <= data_input_data;
 				// truncate 33rd sign bit and divide by Q16
-				data_output_data_int 		<= fir_data_out[31:16]; // Q16
+				//data_output_data_int 		<= fir_data_out[31:16]; // Q16
+				data_output_data_int 		<= signed'(16'(fir_data_out>>>16));
 				data_output_valid_int 		<= fir_data_out_valid;  				
 				if (data_input_endofpacket) begin
 					data_input_ready_int 	<= '0;

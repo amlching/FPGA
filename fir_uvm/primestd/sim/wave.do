@@ -5,7 +5,7 @@ add wave -noupdate -label data_input_eop /top/FIR_DUT/data_input_eop_int
 add wave -noupdate -label data_input_ready /top/FIR_DUT/data_input_ready_int
 add wave -noupdate -label data_input_sop /top/FIR_DUT/data_input_sop_int
 add wave -noupdate -label data_input_valid /top/FIR_DUT/data_input_valid_int
-add wave -noupdate -radix decimal -format analog-step -height 74 -max 28627 -min -12002 -label fir_data_out /top/FIR_DUT/data_output_data_int
+add wave -noupdate -radix decimal -format analog-step -height 74 -max 66 -min -66 -label fir_data_out /top/FIR_DUT/data_output_data_int
 add wave -noupdate -label data_output_eop /top/FIR_DUT/data_output_eop_int
 add wave -noupdate -label data_output_ready /top/FIR_DUT/data_output_ready_int
 add wave -noupdate -label data_output_sop /top/FIR_DUT/data_output_sop_int
@@ -27,9 +27,9 @@ add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_add_st5
 add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_data
 add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_decimation_count
 add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_input_enable
-add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_input_valid_count
+#add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_input_valid_count
 add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_mult
-add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_output_valid_count
+#add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_output_valid_count
 add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/r_source_valid
 add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/reset_n
 add wave -noupdate  sim:/top/FIR_DUT/fir_avl1/f1/sink_data

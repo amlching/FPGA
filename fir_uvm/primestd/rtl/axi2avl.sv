@@ -117,10 +117,11 @@ module axi2avl #
 	// 
 	// The example design sink is always ready to accept the S_AXIS_TDATA  until
 	// the FIFO is not filled with NUMBER_OF_INPUT_WORDS number of input words.
-	assign axis_tready = ((mst_exec_state == WRITE_FIFO) && (write_pointer <= NUMBER_OF_INPUT_WORDS-1));
+	assign axis_tready = (((mst_exec_state == WRITE_FIFO) && (write_pointer <= NUMBER_OF_INPUT_WORDS-1)) && !read_pointer); // don't overwrite when reading
 	
 	// almost full flag as a pulse to trigger read, read is two times faster than write
-	assign fifo_almost_full = (write_pointer == NUMBER_OF_INPUT_WORDS/2);
+//	assign fifo_almost_full = (write_pointer == NUMBER_OF_INPUT_WORDS/2);
+	assign fifo_almost_full = (write_pointer == NUMBER_OF_INPUT_WORDS-1); // read when write is done
 	
 	always@(posedge S_AXIS_ACLK or negedge S_AXIS_ARESETN)
 	begin
@@ -134,18 +135,19 @@ module axi2avl #
 	      begin	  
 			if (fifo_wren)
 	          begin
-	            // write pointer is incremented after every write to the FIFO
-	            // when FIFO write signal is enabled.
-	            write_pointer <= write_pointer + 1;
-	            writes_done <= '0;
-	          end
-
-	        if (write_pointer == NUMBER_OF_INPUT_WORDS-1) //|| S_AXIS_TLAST)
-	          begin
-	            // reads_done is asserted when NUMBER_OF_INPUT_WORDS numbers of streaming data 
-	            // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
-				writes_done <= '1;
-				write_pointer <= 0;
+				if (write_pointer == NUMBER_OF_INPUT_WORDS-1) //|| S_AXIS_TLAST)
+				begin
+	              // reads_done is asserted when NUMBER_OF_INPUT_WORDS numbers of streaming data 
+	              // has been written to the FIFO which is also marked by S_AXIS_TLAST(kept for optional usage).
+				  writes_done <= '1;
+				  write_pointer <= 0;
+				end	
+				else begin
+	              // write pointer is incremented after every write to the FIFO
+	              // when FIFO write signal is enabled.
+	              write_pointer <= write_pointer + 1;
+				  writes_done <= '0;
+				end	
 	          end
 	      end  
 	end
@@ -186,8 +188,7 @@ module axi2avl #
 			  DATA_INPUT_VALID <= '1; 				  
 			  DATA_INPUT_STARTOFPACKET <= '1;
 			end
-	
-		  if (DATA_INPUT_READY)
+		  if (DATA_INPUT_READY && !reads_done)
 	        begin
 	          // read pointer is incremented after every read from the FIFO
 	          // when DATA_INPUT_READY signal is enabled.

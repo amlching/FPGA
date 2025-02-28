@@ -126,9 +126,9 @@ module avl2axi #
 	// the FIFO is filled with NUMBER_OF_OUTPUT_WORDS number of output words.
 	//assign avl_output_ready = ((mst_exec_state == WRITE_FIFO) && (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1));
 	// fir_avl require FIFO to be ready to start convolution so don't wait to enter WRITE_FIFO state otherwise will deadlock
-	assign avl_output_ready = (write_pointer <= NUMBER_OF_OUTPUT_WORDS-1);
+	assign avl_output_ready = ((write_pointer <= NUMBER_OF_OUTPUT_WORDS-1) && !read_pointer); // cannot write until previous read is done
 	// almost full flag as a pulse to trigger read, read is same speed as write, every second clock there is a write transcation after 3 words of header
-	assign fifo_almost_full = (write_pointer == 3);
+	assign fifo_almost_full = (write_pointer == NUMBER_OF_OUTPUT_WORDS-1);  // read only when write is done
 	
 	always@(posedge M_AXIS_ACLK or negedge M_AXIS_ARESETN) 
 	begin
@@ -142,18 +142,20 @@ module avl2axi #
 	      begin
 	        if (fifo_wren)
 	          begin
-	            // write pointer is incremented after every write to the FIFO
-	            // when FIFO write signal is enabled.
-	            write_pointer <= write_pointer + 1;
-	            writes_done <= '0;				
-	          end
-
-	        if ((write_pointer == NUMBER_OF_OUTPUT_WORDS-1)|| DATA_OUTPUT_ENDOFPACKET)
-	          begin
-	            // reads_done is asserted when NUMBER_OF_OUTPUT_WORDS numbers of streaming data 
-	            // has been written to the FIFO which is also marked by DATA_OUTPUT_ENDOFPACKET(kept for optional usage).
-	            writes_done <= '1;
-				write_pointer <= 0;
+				if ((write_pointer == NUMBER_OF_OUTPUT_WORDS-1)|| DATA_OUTPUT_ENDOFPACKET)
+				begin
+	              // reads_done is asserted when NUMBER_OF_OUTPUT_WORDS numbers of streaming data 
+	              // has been written to the FIFO which is also marked by DATA_OUTPUT_ENDOFPACKET(kept for optional usage).
+	              writes_done <= '1;
+				  write_pointer <= 0;
+				end		
+				else
+				begin
+	              // write pointer is incremented after every write to the FIFO
+	              // when FIFO write signal is enabled.
+	              write_pointer <= write_pointer + 1;
+	              writes_done <= '0;	
+				end
 	          end
 	      end  
 	end
@@ -191,8 +193,7 @@ module avl2axi #
 			  read_pointer <= 0;
 			  M_AXIS_TVALID <= '1;
 			end
-			  
-	      if (M_AXIS_TREADY)
+	      if (M_AXIS_TREADY && !reads_done)
 	        begin
 	          // read pointer is incremented after every read from the FIFO
 	          // when M_AXIS_TREADY signal is enabled.

@@ -36,7 +36,7 @@ interface axi_intf #(parameter DATA_WIDTH = 16) (input clk,rst);
     logic [7:0]                     s_tid; //maximum 8 bits wide
     logic                           s_tlast;
     logic [3:0]                     s_tdest;
-    logic [DATA_WIDTH/8 - 1 :0]     s_tstrb;
+    logic [DATA_WIDTH/8 - 1 :0]     s_tstrb = '1; // default 16 bit per transaction
     logic [DATA_WIDTH/8 - 1 :0]     s_tkeep;
 
     logic [7:0]                     m_tid; //maximum 8 bits wide

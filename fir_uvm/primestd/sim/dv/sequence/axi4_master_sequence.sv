@@ -32,9 +32,8 @@ class axi4_master_sanity_sequence extends uvm_sequence#(axi4_master_seq_item);
 	int scan_count;
 	int total_num_sample;
 	int sample_number;
-	
+	int dummy;
 	string line;
-	string freespace_str;
 
     function new(string name = "axi4_master_sanity_sequence");
         super.new(name);
@@ -59,6 +58,7 @@ class axi4_master_sanity_sequence extends uvm_sequence#(axi4_master_seq_item);
 			req.tstrb[1] = '1;  // both bytes enabled
 			req.data[2] = scan_count >> 16; // scan count upper word
 			req.tstrb[2] = '1;  // both bytes enabled
+			//req.sparse_continuous_aligned_en = 0; // 0-> continuous_aligned
 			rtn_code = $fgets (line, scan_file); // skip two lines reserved for future
 			rtn_code = $fgets (line, scan_file); // skip two lines reserved for future
             // load input samples from file			
@@ -69,15 +69,15 @@ class axi4_master_sanity_sequence extends uvm_sequence#(axi4_master_seq_item);
 			  req.tstrb[i] = '1;  // both bytes enabled
 			end
 			rtn_code = $fgets (line, scan_file); // last line "0,0,error_word"
-            rtn_code = $sscanf (line, "%d,%d,%d", sample_number, sample_number, captured_data); // parse			
+            rtn_code = $sscanf (line, "%d,%d,%d", dummy, dummy, captured_data); // parse			
 			req.data[total_num_sample+3] = captured_data[15:0]; // incomming error word 
 			req.tstrb[total_num_sample+3] = '1;  // both bytes enabled
 		
 			finish_item(req);
-            Print_handle = $fopen("data_debug_dump.txt","ab"); 	 
-			$fdisplay(Print_handle,"|sequence_count\t",count, "\t|time\t" ,$time,"|");
-            count = count + 1;
-            $fclose(Print_handle);
+            //Print_handle = $fopen("data_debug_dump.txt","ab"); 	 
+			//$fdisplay(Print_handle,"|sequence_count\t",count, "\t|time\t" ,$time,"|");
+            //count = count + 1;
+            //$fclose(Print_handle);
         end
 		$fclose(scan_file);
     endtask

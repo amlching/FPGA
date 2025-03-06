@@ -46,10 +46,8 @@ class scoreboard extends uvm_scoreboard;
 	  for(int j=0;j<total_num_sample;j=j+1) begin 
 		rtn_code = $fgets (line, scan_file); // contains "sample_number,captured_data"
 		rtn_code = $sscanf (line, "%d,%d", sample_number, captured_data); // parse
-		if(j<total_num_sample-4) begin
 		if(i>0) 
-		  refq[i-1].push_back(signed'(16'(captured_data))); // drop the last 4 words to fit packet with 3 words header and 1 error word
-		end
+		  refq[i-1].push_back(signed'(16'(captured_data))); 
 	  end
 	  rtn_code = $fgets (line, scan_file); // last line "error_word"
 	  rtn_code = $sscanf (line, "%d", captured_data); // parse	

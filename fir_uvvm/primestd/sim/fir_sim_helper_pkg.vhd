@@ -195,7 +195,7 @@ package body fir_sim_helper_pkg is
 
       -- Todo: confirm error bits to extract from raw ADC packet, update create_sim_data.c generates zero error bits for now
       readline(infile, inline);
-	  -- copy same 2 error bits between i and q fir  
+	  -- copy same error bits  
    	  read(inline, v1);  -- contains error bits
       tmp_ptr_cur.packet.data_array(fir_count-1 + 4) := std_logic_vector(to_unsigned(v1, DATA_WIDTH)); -- header + error word offset 
 

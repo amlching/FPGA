@@ -210,7 +210,7 @@ begin
 		  end if;
 
         when proc_fir_data =>          	  	  						  
-  		  fir_data_in <= data_input_data(15 downto 0);
+  		  fir_data_in <= data_input_data;
 
 		  if data_input_endofpacket then
 		  	data_input_ready <= '0';
@@ -224,7 +224,7 @@ begin
 		      length_in_count := length_in_count + 1;			
 		  	end if;
 		  end if;
-  		  -- truncate 33rd sign bit
+  		  -- truncate 33rd sign bit and divide by Q16
 		  data_output_data <= fir_data_out(31 downto 16); -- Q16
 		  data_output_valid <= fir_data_out_valid;   
 		  if(fir_data_out_valid = '1') then

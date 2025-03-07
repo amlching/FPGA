@@ -5,6 +5,7 @@ add wave -noupdate -label data_output_valid /fir_tb/test_harness/dut/data_output
 add wave -noupdate -label data_output_startofpacket /fir_tb/test_harness/dut/data_output_startofpacket
 add wave -noupdate -label data_output_endofpacket /fir_tb/test_harness/dut/data_output_endofpacket
 add wave -noupdate -label output_wave /fir_tb/test_harness/dut/data_output_data
+add wave -noupdate -label control_state /fir_tb/test_harness/dut/control_state
 
 add wave -noupdate -radix decimal -format analog-step -height 74 -max 66 -min -66 -label fir_data_in /fir_tb/test_harness/dut/fir_data_in
 add wave -noupdate -radix decimal -format analog-step -height 74 -max 3e+06 -min -3e+06 -label fir_data_out /fir_tb/test_harness/dut/fir_data_out

@@ -23,6 +23,7 @@ use bitvis_vip_avalon_st.avalon_st_bfm_pkg.all;
 use bitvis_vip_avalon_st.vvc_methods_pkg.all;
 use bitvis_vip_avalon_st.transaction_pkg.all;
 use bitvis_vip_avalon_st.td_vvc_framework_common_methods_pkg.all;
+use bitvis_vip_avalon_st.vvc_cmd_pkg.all;
 
 use work.fir_sim_helper_pkg.all;
 
@@ -44,8 +45,10 @@ begin
 	alias clk is << signal .fir_tb.test_harness.clk										 : std_logic >>;
 
     variable wait_completion : std_logic;
-    variable data            : packet_slv_ptr;
+    variable data_in         : packet_slv_ptr;
     variable exp_fir       	 : packet_slv_ptr;
+	variable v_cmd_idx : natural;                       -- Command index for the last receive
+	variable v_result  : bitvis_vip_avalon_st.vvc_cmd_pkg.t_vvc_result; -- Result from receive (data and metadata)
 
     --! @brief Test back to back scans, with files generated from C model
     --! @param number_files number of processed files
@@ -56,21 +59,32 @@ begin
 
       for file_id in 1 to number_files loop
         log(ID_LOG_HDR, "File: " & to_string(file_id));
-        data     := get_samples("generate_testdata/stimulus_test" & to_string(file_id) & ".txt");
+        data_in    := get_samples("generate_testdata/stimulus_test" & to_string(file_id) & ".txt");
         exp_fir  := get_fir("generate_testdata/fir_data" & to_string(file_id) & ".txt");
 						  
         while exp_fir /= null loop
 
-		  avalon_st_transmit(AVALON_ST_VVCT, 1, data.packet.data_array, "send sample data");
---		  avalon_st_expect(AVALON_ST_VVCT, 2, exp_fir.packet.data_array, "expect fir data"); -- avalon_st_expect has bug in channel assignment, check data in wave.do
+		  avalon_st_transmit(AVALON_ST_VVCT, 1, data_in.packet.data_array, "send sample data");
+--		  avalon_st_expect(AVALON_ST_VVCT, 2, exp_fir.packet.data_array, "expect fir data"); -- avalon_st_expect has bug in channel assignment, use avalong_st_receive
 		  avalon_st_receive(AVALON_ST_VVCT, 2, exp_fir.packet.data_array'length, exp_fir.packet.data_array(1)'length, "receive fir data");
-
-          data     := data.next_packet;
-          exp_fir  := exp_fir.next_packet;
- 
+		  v_cmd_idx := get_last_received_cmd_idx(AVALON_ST_VVCT, 2);
+  
           await_completion(AVALON_ST_VVCT, 1, 200000 * CLK_PERIOD);
           await_completion(AVALON_ST_VVCT, 2, 200000 * CLK_PERIOD);
-
+		  fetch_result(AVALON_ST_VVCT, 2, v_cmd_idx, v_result, "Fetching result from receive operation");
+		  
+		  -- compare result with expected data, in future, move to scoreboard
+		  for i in 0 to exp_fir.packet.data_array'length-1 loop
+			check_value(exp_fir.packet.data_array(i)(15 downto 0), v_result.data_array(i)(15 downto 0), TB_ERROR, "Checking that returned filter equals C model");
+			-- print more detail for debug purpose
+			--if(exp_fir.packet.data_array(i)(15 downto 0) /= v_result.data_array(i)(15 downto 0)) then
+			--  log(ID_LOG_HDR, "Error: Word#"& to_string(i) & ": Fir=" & to_string(to_integer(signed(exp_fir.packet.data_array(i)(15 downto 0)))) & " C model=" & to_string(to_integer(signed(v_result.data_array(i)(15 downto 0)))));
+			--end if;
+		  end loop;		
+		  
+          data_in   := data_in.next_packet;
+          exp_fir  := exp_fir.next_packet;
+		  
         end loop;
       end loop;
     end procedure;

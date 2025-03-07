@@ -27,8 +27,8 @@ architecture behave of fir_th is
 --  constant CLK_PERIOD 		: time    := 16.666 ns;  -- filter sample at 60 MHz, 0 to 12MHz passes through, 15MHz to 30MHz blocked
   constant CLK_PERIOD 		: time    := 500 ns;  -- filter sample at 2 KHz, 0 400Hz passes through, 500Hz to 1KHz blocked
   constant DATA_WIDTH    	: integer := 16;
-  constant GC_CHANNEL_WIDTH	: integer := 1;
-  constant GC_ERROR_WIDTH	: integer := 0;
+  constant GC_CHANNEL_WIDTH	: integer := 1; -- was 1
+  constant GC_ERROR_WIDTH	: integer := 1; -- was 0
   constant GC_EMPTY_WIDTH	: integer := 1; -- check against log2(symbols_per_beat), symbols_per_beat = avalon data length/symbol_width
 
   constant DATA_AVALON_ST_CONFIG : t_avalon_st_bfm_config := (

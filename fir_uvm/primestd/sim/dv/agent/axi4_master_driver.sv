@@ -45,13 +45,13 @@ class axi4_master_driver extends uvm_driver#(axi4_master_seq_item);
     task run_phase(uvm_phase phase);
 	forever
 	    begin
-        $display("enetering into master driver");
+        //$display("enetering into master driver");
 	        seq_item_port.get_next_item(req);
             pre_req();
             drive_axi(req);
             debug_count =  0; 
 	        seq_item_port.item_done();
-        $display("leavig for next transaction from master driver");
+        //$display("leavig for next transaction from master driver");
 	    end
     endtask
 
@@ -60,7 +60,7 @@ class axi4_master_driver extends uvm_driver#(axi4_master_seq_item);
             @(posedge vif.clk)
                 if(!vif.rst)
                 begin
-                $display("enetred into drive axi master");
+                //$display("enetred into drive axi master");
                     repeat(req.clk_count)
                     begin
                     @(posedge vif.clk);
@@ -105,7 +105,7 @@ class axi4_master_driver extends uvm_driver#(axi4_master_seq_item);
                     vif.s_tstrb           <= 0;
                     vif.s_axis_tdata    <= 0;
                 end
-        $display("leaving from master driver in axi task");
+        //$display("leaving from master driver in axi task");
         end while(!req.data.size == 0 && !vif.rst);
     endtask
 

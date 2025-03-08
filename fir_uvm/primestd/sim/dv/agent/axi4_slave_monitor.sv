@@ -43,7 +43,7 @@ class axi4_slave_monitor extends uvm_monitor;
 		  end
 		if(vif.m_tlast)
 		  begin	  
-			`uvm_info(get_type_name(), $sformatf("Monitor found %d packets with %d words", packet, word+1), UVM_LOW)		  
+			`uvm_info(get_type_name(), $sformatf("Monitor found packet#%d with%d words", packet, word+1), UVM_LOW)		  
 			packet <= packet + 1;
 			word <= 0;			
 			if(packet == 7) begin			  

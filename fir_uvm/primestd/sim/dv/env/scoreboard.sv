@@ -28,7 +28,7 @@ class scoreboard extends uvm_scoreboard;
   endfunction
 
   virtual function write(axi4_slave_seq_item item);
-	$display("entering scoreboard");
+	//$display("entering scoreboard");
 	scan_file = $fopen("generate_testdata/fir_data1.txt", "r");
 	
 	// Read first 9 packets from file
@@ -36,7 +36,7 @@ class scoreboard extends uvm_scoreboard;
 	  packet_error = 0;
 	  rtn_code = $fgets (line, scan_file); // read first line for "scan_count,total_num_sample,0"
 	  rtn_code = $sscanf (line, "%d,%d,%d", scan_count, total_num_sample, dummy); // parse
-	  $display("scan count=%d, total_num_sample=%d",scan_count, total_num_sample);
+	  //$display("scan count=%d, total_num_sample=%d",scan_count, total_num_sample);
 	  if(i>0) begin 
 	  refq[i-1].push_back('hAA); // sensor type 
 	  refq[i-1].push_back(scan_count[15:0]); // scan count lower word
@@ -68,7 +68,7 @@ class scoreboard extends uvm_scoreboard;
 	  if((!packet_error) && (i>0))
         `uvm_info(get_type_name(), $sformatf("PASS! Packet #%d matches",i), UVM_LOW)			
 	end
-	$display("leaving scoreboard");
+	//$display("leaving scoreboard");
 	$fclose(scan_file);
   endfunction
 endclass

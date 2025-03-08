@@ -43,12 +43,12 @@ class axi4_slave_driver extends uvm_driver#(axi4_slave_seq_item);
     task run_phase(uvm_phase phase);
 	forever
 	    begin
-        $display("entering into slave driver count");
+        //$display("entering into slave driver count");
 	        seq_item_port.get_next_item(req);
             drive_axi(req); 
             this.tr_complete = 0;
 	        seq_item_port.item_done();
-        $display("leaving from slave driver for next transaction");
+        //$display("leaving from slave driver for next transaction");
 	    end
     endtask
 
@@ -70,7 +70,7 @@ class axi4_slave_driver extends uvm_driver#(axi4_slave_seq_item);
                     vif.m_axis_tready <= 0;
                 else
                 begin
-                    $display("enetered ready");
+                    //$display("enetered ready");
                     repeat(req.clk_count) @(posedge vif.clk);
                     vif.m_axis_tready <= 1; //put if else for ready before valid 
                 end 

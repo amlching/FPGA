@@ -85,7 +85,7 @@ module top ;
 
     initial
     begin
-        $dumpfile("uart_axi4_stream.vcd");
+        $dumpfile("fir_uvm.vcd");
         $dumpvars(0,top,top.inf);
     end
 

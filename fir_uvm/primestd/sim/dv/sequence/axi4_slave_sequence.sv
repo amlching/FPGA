@@ -34,7 +34,7 @@ class axi4_slave_sanity_sequence extends uvm_sequence#(axi4_slave_seq_item);
             req = axi4_slave_seq_item::type_id::create("req");
 			start_item(req);
             //assert(req.randomize());//with{ready_before_valid == 0;}); // lite license doesn't allow randomize
-			req.ready_before_valid = 0; 
+			req.ready_before_valid = 0;  // 1 causes error in data, a test case we don't need 
             finish_item(req);
         end
    endtask

@@ -33,6 +33,7 @@ class axi4_slave_seq_item extends uvm_sequence_item;
     `uvm_object_utils_end
   
     constraint range{clk_count inside{[0:15]};}
+
     //Constructor
     function new(string name = "axi4_slave_seq_item");
         super.new(name);

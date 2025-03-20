@@ -1,3 +1,4 @@
+
 //----------------------------------------------------------------------------------------------------------------------
 //! @file
 //! @brief The unit applies low pass filter and sends output data to avalon-st.
@@ -40,10 +41,11 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 	states_onehot_t currState = control_idle;
 	states_onehot_t nextState;
 	
-	int header_part;
-	int SENSOR_TYPE_FIRST_PART = 1;
-	int SCAN_COUNT_FIRST_PART = 2;
-	int SCAN_COUNT_SECOND_PART = 3;
+	bit [1:0] header_part;
+	localparam bit [1:0] COUNT_IDLE = 0;
+	localparam bit [1:0] SENSOR_TYPE_FIRST_PART = 1;
+	localparam bit [1:0] SCAN_COUNT_FIRST_PART = 2;
+	localparam bit [1:0] SCAN_COUNT_SECOND_PART = 3;
 	int length_in_count;
 	int length_out_count;
 
@@ -76,7 +78,7 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 			data_output_endofpacket 	<= data_output_endofpacket_int;
 			data_output_data 			<= data_output_data_int;
 		end
-			
+		
 	// 21 taps, low pass filter coefficients are hardcoded
 	fir_lowpass f1(.clk(clk), .reset_n(reset_fir_n), .sink_data(fir_data_in), .sink_valid(fir_valid_in), .sink_error('0),
 					.source_data(fir_data_out), .source_valid(fir_data_out_valid), .source_error(fir_error_out));
@@ -100,7 +102,7 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 			control_idle: begin
 				if (data_input_startofpacket & data_input_valid & data_output_ready) 
 					nextState 		<= forward_header;
-				else
+				else 
 					nextState 		<= control_idle;
 			end
 			forward_header: begin	  		    
@@ -108,27 +110,40 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 					nextState       <= wait_fir_end;
 				else if (header_part == SCAN_COUNT_SECOND_PART)
 					nextState 		<= proc_fir_data;
+				else
+					nextState 		<= forward_header;
 			end
 			proc_fir_data: begin	
 				if (data_input_endofpacket)
 					nextState       <= wait_fir_end;
+				else
+					nextState		<= proc_fir_data;
 			end
 			wait_fir_end: begin	
 				if (length_out_count >= (length_in_count/FACTOR))   		    
 					nextState  		<= control_idle;
+				else
+					nextState		<= wait_fir_end;
 			end
 		endcase
 	end
-
+	
+	// counter for forward_header state
+	always_ff @ (posedge clk or posedge reset)
+		if (reset)
+			header_part = COUNT_IDLE;
+		else begin 
+		if (nextState == control_idle)
+			header_part = COUNT_IDLE;
+		else if (nextState == forward_header)
+			if(header_part < SCAN_COUNT_SECOND_PART)
+				header_part = header_part + 1;
+		end		
+		
 	// FSM outputs
 	always_comb begin
 		unique case (currState)
 			control_idle: begin
-				if (data_input_startofpacket & data_input_valid & data_output_ready) 
-					data_input_ready_int 		<= '1;
-				else
-					data_input_ready_int 		<= '0;
-				header_part 					= 0;
 				reset_fir_n 					<= '0;
 				fir_valid_in 					<= '0;
 				data_output_valid_int			<= '0;
@@ -139,36 +154,32 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 				length_out_count 				= 0;
 				error_word						<= '0;
 				fir_data_in						<= '0;				
+				if (data_input_startofpacket & data_input_valid & data_output_ready) 
+				  data_input_ready_int 			<= '1;
+				else
+				  data_input_ready_int 			<= '0;
 			end
 			forward_header: begin	
 				reset_fir_n					<= '1;
 				data_output_endofpacket_int <= '0;
-				data_output_data_int 		<= data_input_data;
-
-				case (header_part)
-					SENSOR_TYPE_FIRST_PART: begin
-						data_output_startofpacket_int	<= '1;
-					end
-					SCAN_COUNT_FIRST_PART: begin
-						data_output_startofpacket_int	<= '0;
-					end
-					SCAN_COUNT_SECOND_PART: begin
-						data_output_startofpacket_int	<= '0;
-					end
-				endcase;  		    
+				data_output_data_int 		<= data_input_data;				
 				if (data_input_endofpacket) begin
-					data_input_ready_int 	<= '0;
-					data_output_valid_int	<= '0;
-					error_word 				<= data_input_data;
-					length_out_count 	= length_in_count/FACTOR;
-				end else if (header_part == SCAN_COUNT_SECOND_PART)
-					data_output_valid_int	<= '0;
-				else begin
-					data_input_ready_int 	<= '1;
-					data_output_valid_int	<= '1;
-				end
-				if(header_part < SCAN_COUNT_SECOND_PART)
-					header_part = header_part + 1;
+				  data_input_ready_int 		<= '0;
+				  data_output_valid_int		<= '0;
+				  error_word 				<= data_input_data;
+				  length_out_count 	= length_in_count/FACTOR;
+				end else begin
+				  data_input_ready_int 		<= '1;
+				  data_output_valid_int		<= '1;
+				  if(header_part < SCAN_COUNT_SECOND_PART) begin
+					if(header_part == SENSOR_TYPE_FIRST_PART)
+					  data_output_startofpacket_int	<= '1;
+					else
+					  data_output_startofpacket_int	<= '0;
+				  end else if(header_part == SCAN_COUNT_SECOND_PART) begin
+					data_output_startofpacket_int	<= '0;
+				  end
+				end 		
 			end	
 			proc_fir_data: begin	
 				fir_data_in <= data_input_data;
@@ -184,7 +195,7 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 					data_input_ready_int 	<= '1;
 					fir_valid_in 			<= data_input_valid;
 					if (data_input_valid)
-						length_in_count = length_in_count + 1;			
+						length_in_count 	= length_in_count + 1;			
 				    if (fir_data_out_valid)
 						length_out_count 	= length_out_count + 1;
 				end
@@ -200,11 +211,11 @@ data_output_ready, data_output_valid, data_output_startofpacket, data_output_end
 					fir_data_in 				<= '0;
 					fir_valid_in 				<= '0;
 				end else begin
-					if (fir_data_out_valid)
-						length_out_count = length_out_count + 1;
 					data_output_valid_int 	<= fir_data_out_valid;
 					// truncate 33rd bit sign and divide by Q16
-					data_output_data_int 	<= fir_data_out[31:16];
+					data_output_data_int 	<= fir_data_out[31:16];				
+					if (fir_data_out_valid)
+					  length_out_count = length_out_count + 1;
 				end
 			end	
 		endcase

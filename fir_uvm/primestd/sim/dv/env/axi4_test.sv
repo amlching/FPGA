@@ -39,7 +39,7 @@ class basic_test extends uvm_test;
         uvm_config_db#(int)::set(this, "*", "handle", Print_handle);
         env = axi4_env::type_id::create("env", this);
         master_seq = axi4_master_sanity_sequence::type_id::create("master_seq", this);
-        slave_seq  = axi4_slave_sanity_sequence::type_id::create("slave_seq", this);
+        slave_seq  = axi4_slave_sanity_sequence::type_id::create("slave_seq", this);				
     endfunction
 
     task run_phase(uvm_phase phase);
@@ -48,10 +48,10 @@ class basic_test extends uvm_test;
       $display("enetering into seq start of master and slave");
           fork
               begin
-                  master_seq.get_print(Print_handle);
+                  //master_seq.get_print(Print_handle);
                   master_seq.start(env.master_agent.master_seqr);
               end
-              begin
+              begin			  
                   slave_seq.start(env.slave_agent.slave_seqr);
               end
           join_any

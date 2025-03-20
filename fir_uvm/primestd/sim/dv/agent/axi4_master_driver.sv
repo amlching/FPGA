@@ -26,7 +26,7 @@ class axi4_master_driver extends uvm_driver#(axi4_master_seq_item);
 
     virtual axi_intf#(`DATA_WIDTH) vif;
     bit tr_complete;
-    int Print_handle;
+    //int Print_handle;
     int debug_count;
 
     function new(string name="axi4_master_driver", uvm_component parent = null);
@@ -37,8 +37,8 @@ class axi4_master_driver extends uvm_driver#(axi4_master_seq_item);
         super.build_phase(phase);
 	    if( !uvm_config_db#(virtual axi_intf#(`DATA_WIDTH))::get(this,"*", "vif", vif))
 		    `uvm_fatal(get_full_name(),{"virtual interface must be set for:",".mem_vif"} )
-        if( !uvm_config_db#(int)::get(this,"*", "handle", Print_handle))
-		    `uvm_fatal(get_full_name(),{"print handle must be set for in masterdriver:",".Print_handle"} )
+        //if( !uvm_config_db#(int)::get(this,"*", "handle", Print_handle))
+		//    `uvm_fatal(get_full_name(),{"print handle must be set for in masterdriver:",".Print_handle"} )
 
     endfunction
 

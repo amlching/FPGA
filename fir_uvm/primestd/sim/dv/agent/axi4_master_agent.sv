@@ -32,8 +32,8 @@ class axi4_master_agent extends uvm_agent;
 
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
-        master_driver  = axi4_master_driver::type_id::create("master_driver", this);
         master_seqr    = axi4_master_seqr::type_id::create("master_seqr", this);
+        master_driver  = axi4_master_driver::type_id::create("master_driver", this);
     endfunction
 
     function void connect_phase(uvm_phase phase);

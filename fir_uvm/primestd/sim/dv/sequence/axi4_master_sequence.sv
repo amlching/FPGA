@@ -25,7 +25,8 @@ class axi4_master_sanity_sequence extends uvm_sequence#(axi4_master_seq_item);
     `uvm_object_utils(axi4_master_sanity_sequence)
     axi4_master_seq_item req;
     process job1;
-    int count,Print_handle;
+    int seq_count;
+	//int Print_handle;
     int scan_file    ; // file handler
 	int rtn_code;
 	int signed captured_data;
@@ -39,15 +40,18 @@ class axi4_master_sanity_sequence extends uvm_sequence#(axi4_master_seq_item);
         super.new(name);
     endfunction
     
-    function void get_print(int a);
-        this.Print_handle = a;
-    endfunction
+    //function void get_print(int a);
+    //    this.Print_handle = a;
+    //endfunction
 
     virtual task body();
 		scan_file = $fopen("generate_testdata/stimulus_test1.txt", "r");
+		req  = axi4_master_seq_item::type_id::create("req");
+		// workaround that master driver missed the first item
+		start_item(req);	
+		finish_item(req);
         repeat(`COUNT)
         begin
-            req  = axi4_master_seq_item::type_id::create("req");
             start_item(req);
 			rtn_code = $fgets (line, scan_file); // read first line for "scan_count,total_num_sample"
             rtn_code = $sscanf (line, "%d,%d", scan_count, total_num_sample); // parse		
@@ -72,11 +76,12 @@ class axi4_master_sanity_sequence extends uvm_sequence#(axi4_master_seq_item);
             rtn_code = $sscanf (line, "%d,%d,%d", dummy, dummy, captured_data); // parse			
 			req.data[total_num_sample+3] = captured_data[15:0]; // incomming error word 
 			req.tstrb[total_num_sample+3] = '1;  // both bytes enabled
-		
+			req.clk_count = 1; // buffer time
 			finish_item(req);
             //Print_handle = $fopen("data_debug_dump.txt","ab"); 	 
-			//$fdisplay(Print_handle,"|sequence_count\t",count, "\t|time\t" ,$time,"|");
-            //count = count + 1;
+			//$fdisplay(Print_handle,"|sequence_count\t",seq_count, "\t|time\t" ,$time,"|");
+			//$display("loaded packet %d",seq_count);			
+            //seq_count = seq_count + 1;
             //$fclose(Print_handle);
         end
 		$fclose(scan_file);

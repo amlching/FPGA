@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 `define DATA_WIDTH 16
 `define FACTOR 2
-`define COUNT 10
+`define COUNT 11 /* send 1 more packet than 10 because the last packet hasn't come back when testbench finishes */
 `define NUM_OF_SAMPLES 500 
 import uvm_pkg::*;
 `include "uvm_macros.svh"

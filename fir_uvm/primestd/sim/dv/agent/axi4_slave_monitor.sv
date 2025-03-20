@@ -36,19 +36,19 @@ class axi4_slave_monitor extends uvm_monitor;
 			packet <= 0;
 			word <= 0;
 		  end 
-		else if (vif.m_axis_tvalid && vif.m_axis_tready)
-		  begin			  
-			item.data[packet].push_back(vif.m_axis_tdata); // push in slave data
-			word <= word + 1;
-		  end
-		if(vif.m_tlast)
+		else if(vif.m_tlast)
 		  begin	  
 			`uvm_info(get_type_name(), $sformatf("Monitor found packet#%d with%d words", packet, word+1), UVM_LOW)		  
 			packet <= packet + 1;
 			word <= 0;			
-			if(packet == 7) begin			  
-			  mon_analysis_port.write(item); // write 8 slave packets to scordboard to compare
+			if(packet == 9) begin			  
+			  mon_analysis_port.write(item); // write 10 slave packets to scordboard to compare, test case ends before last packet 
 			end	  
+		  end
+		else if (vif.m_axis_tvalid && vif.m_axis_tready)
+		  begin			  
+			item.data[packet].push_back(vif.m_axis_tdata); // push in slave data
+			word <= word + 1;
 		  end
     end
 	end

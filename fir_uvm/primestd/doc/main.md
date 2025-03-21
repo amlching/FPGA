@@ -6,15 +6,13 @@ The coefficients are designed for 2000Hz, passing through 0 to 400Hz, filter 500
 FIR filter is implemented in VHDL as per picture Wikipedia FIR web-page:
 ![FIR filter](fir-direct-form-300x120.png)
 
-This no parameter for this unit [parameters](#filter-params). 
-
 # Interface
 
 Besides clock and reset, this unit has the following ports:
 * Inputs:
-  * data_input (Avalon-ST interface, value as 2's complement)
+  * data_input (AXI-S slave to Avalon-ST interface, ADC value in 2's complement)
 * Outputs:
-  * data_output (Avalon-ST interface, value as 2's complement)
+  * data_output (Avalon-ST interface to AXI-S Master, ADC value in 2's complement)
 
 # data format
 
@@ -40,7 +38,7 @@ Besides clock and reset, this unit has the following ports:
 |N+3|(15:0): filtered N (2's complement)|
 |N+4|error bits|
 
-Error bits from fir fitler are reserved for future use.
+Error bits from fir filter are reserved for future use.
 
 # Design & Implementation
 The top unit controls the parsing of the input data packet and the outgoing data packet.
